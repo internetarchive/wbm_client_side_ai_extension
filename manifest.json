@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Wayback Machine AI Assistant",
+  "version": "0.1.0",
+  "description": "AI-assisted analysis of archived pages using on-device Gemini Nano",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://web.archive.org/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://web.archive.org/*"],
+      "js": ["./content/content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "./popup/popup.html",
+    "default_title": "Wayback AI"
+  }
+}
