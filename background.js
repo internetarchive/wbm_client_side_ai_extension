@@ -9,14 +9,14 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "ANALYZE_PAGE") {
-    handlePageAnalysis(message.content, sendResponse);
+    handlePageAnalysis(message.content, message.action, sendResponse);
     return true;
   }
 });
 
-async function handlePageAnalysis(pageContent, sendResponse) {
+async function handlePageAnalysis(pageContent, action, sendResponse) {
   console.time("AI response");
-  const result = await aiSession.analyzePage(pageContent);
+  const result = await aiSession.analyzePage(pageContent, action);
   console.timeEnd('AI response');
   sendResponse(result);
 }
