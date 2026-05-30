@@ -17,7 +17,16 @@
   "content_scripts": [
     {
       "matches": ["*://web.archive.org/*"],
-      "js": ["./content/content.js"]
+      "js": [
+        "./content/ui/overlay.js",
+        "./content/ui/actionPanel.js",
+        "./content/utils/aiAvailability.js",
+        "./content/utils/browserSupport.js",
+        "./content/utils/isArchivedPage.js",
+        "./content/services/contentExtractor.js",
+        "./content/services/pageAnalyzer.js",
+        "./content/content.js"
+      ]
     }
   ],
   "action": {
