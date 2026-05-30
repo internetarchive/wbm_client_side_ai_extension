@@ -20,22 +20,34 @@ export class AISession {
         } 
     }
 
-    async analyzePage(pageContent) {
+    async analyzePage(pageContent, action) {
         try {
             if (!this.session) {
                 await this.init();
             }
-            const prompt = `
-                Summarize this archived web page in 2-3 sentences:
-                ${pageContent}
-            `;
-          
-          const result = await this.session.prompt(prompt);
-          
-            return {
-                success: true,
-                summary: result,
-            };
+            let prompt;
+
+            if(action === "summarize") {
+                prompt = `
+                    Summarize this archived web page in 2-3 sentences:
+                    ${pageContent}
+                `;
+                const result = await this.session.prompt(prompt);
+                return {
+                    success: true,
+                    type: 'summarize',
+                    summary: result,
+                };
+            } else if(action === "quality") {
+                prompt = `Analyze this archived web page and determine: 1) Is this a real page or a soft-404 error page? 2) Does the content seem complete or broken? Answer in 2-3 sentences: ${pageContent}`;
+
+                const result = await this.session.prompt(prompt);
+                return {
+                    success: true,
+                    type: 'quality',
+                    summary: result,
+                };
+            }
         } catch (error) {
             return {
                 success: false,
