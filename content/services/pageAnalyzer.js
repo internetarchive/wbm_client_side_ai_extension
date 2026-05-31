@@ -1,3 +1,14 @@
+/**
+ * Entry point for page analysis.
+ *
+ * Validates AI availability, extracts readable page content,
+ * and presents available AI actions (summarize, explain, etc.).
+ * Once the user selects an action, the request is forwarded
+ * to the background script for processing and the result is
+ * displayed in an overlay.
+ */
+
+
 async function analyzePage() {
 
   const isAvailable = await checkAIAvailability();

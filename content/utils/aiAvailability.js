@@ -1,3 +1,15 @@
+/**
+ * Verifies that the Built-in AI model is ready to accept prompts.
+ *
+ * The API can be:
+ * - available: ready for use
+ * - downloadable: model exists but has not been downloaded yet
+ * - unavailable: AI is not supported on this device/browser
+ *
+ * User-friendly messages are shown for unsupported states so the
+ * analysis flow can exit early before sending any requests.
+ */
+
 async function checkAIAvailability() {
   try {
     const availability = await LanguageModel.availability();
