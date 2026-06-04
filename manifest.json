@@ -5,7 +5,9 @@
   "description": "AI-assisted analysis of archived pages using on-device Gemini Nano",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "contextMenus",
+    "storage"
   ],
   "host_permissions": [
     "*://web.archive.org/*"
@@ -19,14 +21,12 @@
       "matches": ["*://web.archive.org/*"],
       "js": [
         "./content/ui/overlay.js",
-        "./content/ui/actionPanel.js",
-        "./content/utils/aiAvailability.js",
-        "./content/utils/browserSupport.js",
-        "./content/utils/isArchivedPage.js",
+        "./content/services/showResult.js",
         "./content/services/contentExtractor.js",
         "./content/services/pageAnalyzer.js",
         "./content/content.js"
-      ]
+      ],
+      "css": ["./content/style/style.css"]
     }
   ],
   "action": {

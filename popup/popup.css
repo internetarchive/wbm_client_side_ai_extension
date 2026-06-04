@@ -1,0 +1,128 @@
+/* General Body styles for the popup */
+body {
+    width: 300px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f9f9f9;
+    color: #222;
+    margin: 0;
+}
+
+.container {
+    padding: 16px;
+}
+
+/* --- Header --- */
+.header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* Space between icon and text */
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+}
+
+.header svg {
+    color: #4285F4;
+    /* Google Blue */
+}
+
+.header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.description {
+    font-size: 14px;
+    color: #555;
+    margin-top: 0;
+}
+
+/* --- Settings Elements --- */
+.setting {
+    margin-bottom: 16px;
+}
+
+label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    background-color: #fff;
+}
+
+/* --- Button and Status --- */
+button {
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background-color: #4285F4;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #357ae8;
+}
+
+#status-message {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #0b8744;
+    text-align: center;
+    height: 16px;
+    /* Reserve space to prevent layout shift */
+}
+
+/* --- Dark Mode --- */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #2e2e31;
+        color: #e1e1e1;
+    }
+
+    .header {
+        border-bottom-color: #4a4a4f;
+    }
+
+    .header svg {
+        color: #8ab4f8;
+        /* Lighter blue for dark mode */
+    }
+
+    .description {
+        color: #bbb;
+    }
+
+    select {
+        background-color: #3a3a3e;
+        border-color: #555;
+        color: #e1e1e1;
+    }
+
+    button {
+        background-color: #8ab4f8;
+        color: #202124;
+    }
+
+    button:hover {
+        background-color: #9ac1f9;
+    }
+
+    #status-message {
+        color: #81c995;
+    }
+}
