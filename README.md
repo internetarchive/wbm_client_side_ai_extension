@@ -18,7 +18,10 @@ cd wbm_client_side_ai_extension
 4. Click **Load unpacked** and select the project folder
 
 5. Visit any archived page on [web.archive.org](https://web.archive.org)
-   and the extension will activate automatically
+
+6. Right-click anywhere on the page to open the context menu.
+
+7. Translate option will only appear when we select some text to translate.
 
 ## GSoC Documentation
 
