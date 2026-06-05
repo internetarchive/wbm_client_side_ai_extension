@@ -109,4 +109,28 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       }
     );
   }
-});
+  else if(info.menuItemId === "translate") {
+    const selectedText = info.selectionText;
+    chrome.storage.sync.get(['targetLanguage'], async (result) => {
+      const targetLanguage = result.targetLanguage || 'en';
+      chrome.tabs.sendMessage(tab.id, {
+        type: "SHOW_LOADING",
+        success: true,
+        summary: `⏳ Translating to: ${targetLanguage}`
+      })
+      console.log(`Translating to: ${targetLanguage}`);
+      const translation = await aiSession.analyzePage(
+        selectedText, 
+        info.menuItemId,
+        targetLanguage
+      );
+
+      chrome.tabs.sendMessage(tab.id, {
+        type: "SHOW_RESULT",
+        action: "translate",
+        success: translation?.success,
+        summary: translation?.summary
+      });
+    })
+  }
+})
