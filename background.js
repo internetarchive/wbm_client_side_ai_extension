@@ -79,7 +79,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  if(!checkAIAvailability()) {
+  if (!(await checkAIAvailability())) {
     console.log("Sorry the built in AI is not available!");
     chrome.tabs.sendMessage(
       tab.id,
