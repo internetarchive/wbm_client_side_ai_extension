@@ -136,6 +136,8 @@ function showOverlay(action, result) {
 
   const closeButton = document.createElement('button');
   closeButton.id = 'wbm-ai-close';
+  closeButton.type = 'button';
+  closeButton.setAttribute('aria-label', 'Close overlay');
   closeButton.innerText = '×'; 
   closeButton.onclick = () => removeDiv();
 
