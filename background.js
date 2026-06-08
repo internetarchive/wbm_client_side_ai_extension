@@ -49,7 +49,7 @@ async function checkAIAvailability() {
     }
     return true;
   } catch (error) {
-    console.log('Error occured while checking the AI availability: ', error);
+    console.log('Error occurred while checking the AI availability: ', error);
     return false;
   }
 }
