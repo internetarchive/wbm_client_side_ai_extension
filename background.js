@@ -128,8 +128,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       chrome.tabs.sendMessage(tab.id, {
         type: "SHOW_RESULT",
         action: "translate",
-        success: translation?.success,
-        summary: translation?.summary
+        success: Boolean(translation?.success),
+        summary: translation?.summary ?? translation?.error ?? "Unknown error"
       });
     })
   }
