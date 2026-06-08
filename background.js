@@ -54,7 +54,7 @@ async function checkAIAvailability() {
 }
 
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if(!isPlaybackPage(tab.url)) {
     console.log("It is not a playback page!");
     chrome.tabs.sendMessage(
