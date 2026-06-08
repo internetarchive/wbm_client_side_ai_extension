@@ -6,7 +6,8 @@ chrome.runtime.onInstalled.addListener(async () => {
   chrome.contextMenus.create({
     id: "wbm-parent",
     title: "Wayback Machine AI Helper",
-    contexts: ["all"] 
+    contexts: ["page", "selection"],
+    documentUrlPatterns: ["*://web.archive.org/web/*"]
   });
 
   chrome.contextMenus.create({
