@@ -57,7 +57,6 @@ function createShadowHost() {
       color: #333333;
       max-height: 450px;
       overflow-y: auto;
-      white-space: pre-wrap;
     }
 
     #wbm-ai-close {
@@ -143,7 +142,7 @@ function showOverlay(action, result) {
 
   const content = document.createElement('div');
   content.id = 'wbm-ai-content';
-  content.innerText = result;
+  content.innerHTML = marked.parse(result);
 
   header.appendChild(closeButton);
   popup.appendChild(header);
