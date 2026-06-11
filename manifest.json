@@ -20,6 +20,7 @@
     {
       "matches": ["*://web.archive.org/*"],
       "js": [
+        "./content/lib/Readability.js",
         "./content/ui/overlay.js",
         "./content/services/showResult.js",
         "./content/services/contentExtractor.js",
