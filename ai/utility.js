@@ -20,7 +20,7 @@ export class AISession {
         } 
     }
 
-    async analyzePage(pageContent, action, targetLanguage) {
+    async analyzePage(pageContent,  timingSummary, action, targetLanguage) {
         try {
             if (!this.session) {
                 await this.init();
@@ -33,7 +33,7 @@ export class AISession {
                 prompt = `Summarize this archived web page in 2-3 sentences:
                     ${pageContent}`;
             } else if(action === "quality") {
-                prompt = `Analyze this archived web page and determine: 1) Is this a real page or a soft-404 error page? 2) Does the content seem complete or broken? Answer in 2-3 sentences: ${pageContent}`;
+                prompt = `Analyze this archived web page and determine: 1) Is this a real page or a soft-404 error page? 2) Does the content seem complete or broken? Answer in 2-3 sentences: ${pageContent} \n\nLoad Stats:\n ${timingSummary}`;
             } 
             console.time(action);
             const result = await this.session.prompt(prompt);
@@ -43,13 +43,11 @@ export class AISession {
                 const translated = await this.translateResult(result, targetLanguage);
                 return {
                     success: true,
-                    type: action,
                     summary: translated,
                 };
             }
             return {
                 success: true,
-                type: action,
                 summary: result,
             };
         } catch (error) {

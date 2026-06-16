@@ -1,8 +1,12 @@
-function showResult(action, success, summary) {
+function showResult(action, success, summary, timings) {
     if(!action) action = "Wayback Machine AI Extension"
-    if (success) {
+    if (success && action === "summarize") {
       showOverlay(action, summary);
-    } else {
-      showOverlay(action, `Sorry! The summary could not be generated this time!\n${summary}`);
+    } 
+    else if(success && action === "quality") {
+      showOverlay(action, summary, timings);
+    }
+    else {
+      showOverlay(action, `Sorry! The result could not be generated this time!\n${summary}`);
     }
 }

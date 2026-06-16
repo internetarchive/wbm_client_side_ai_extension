@@ -1,9 +1,17 @@
-/* General Body styles for the popup */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
 body {
-    width: 300px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #f9f9f9;
-    color: #222;
+    border-radius: 2%;
+    width: 280px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    color: #1c1c1e;
     margin: 0;
 }
 
@@ -11,118 +19,142 @@ body {
     padding: 16px;
 }
 
-/* --- Header --- */
+/* Header */
 .header {
     display: flex;
     align-items: center;
     gap: 8px;
-    /* Space between icon and text */
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
     padding-bottom: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 .header svg {
-    color: #4285F4;
-    /* Google Blue */
+    color: #007aff;
 }
 
 .header h1 {
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #1c1c1e;
 }
 
 .description {
-    font-size: 14px;
-    color: #555;
-    margin-top: 0;
+    font-size: 12.5px;
+    color: #6e6e73;
+    margin-bottom: 14px;
+    line-height: 1.5;
 }
 
-/* --- Settings Elements --- */
+/* Settings */
 .setting {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
 
 label {
     display: block;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #6e6e73;
     margin-bottom: 6px;
 }
 
 select {
     width: 100%;
     padding: 8px 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-    background-color: #fff;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 13.5px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.6);
+    color: #1c1c1e;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
 }
 
-/* --- Button and Status --- */
+select:focus {
+    outline: none;
+    border-color: #007aff;
+}
+
+/* Button */
 button {
     width: 100%;
-    padding: 10px;
-    font-size: 15px;
+    padding: 9px;
+    font-size: 14px;
     font-weight: 600;
-    color: #fff;
-    background-color: #4285F4;
+    font-family: inherit;
+    color: #ffffff;
+    background: #007aff;
     border: none;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: opacity 0.15s ease;
+    letter-spacing: -0.01em;
 }
 
 button:hover {
-    background-color: #357ae8;
+    opacity: 0.85;
+}
+
+button:active {
+    opacity: 0.7;
 }
 
 #status-message {
-    margin-top: 12px;
-    font-size: 13px;
-    color: #0b8744;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #34c759;
     text-align: center;
     height: 16px;
-    /* Reserve space to prevent layout shift */
+    letter-spacing: -0.01em;
 }
 
-/* --- Dark Mode --- */
+/* Dark mode */
 @media (prefers-color-scheme: dark) {
     body {
-        background-color: #2e2e31;
-        color: #e1e1e1;
+        background: rgba(28, 28, 30, 0.75);
+        color: #f2f2f7;
     }
 
     .header {
-        border-bottom-color: #4a4a4f;
+        border-bottom-color: rgba(255, 255, 255, 0.08);
     }
 
     .header svg {
-        color: #8ab4f8;
-        /* Lighter blue for dark mode */
+        color: #0a84ff;
+    }
+
+    .header h1 {
+        color: #f2f2f7;
     }
 
     .description {
-        color: #bbb;
+        color: #aeaeb2;
+    }
+
+    label {
+        color: #aeaeb2;
     }
 
     select {
-        background-color: #3a3a3e;
-        border-color: #555;
-        color: #e1e1e1;
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #f2f2f7;
     }
 
     button {
-        background-color: #8ab4f8;
-        color: #202124;
-    }
-
-    button:hover {
-        background-color: #9ac1f9;
+        background: #0a84ff;
     }
 
     #status-message {
-        color: #81c995;
+        color: #30d158;
     }
 }

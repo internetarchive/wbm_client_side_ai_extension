@@ -94,14 +94,32 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         async (response) => {
           if (!response || !response.content) return;
 
+          const timings = response.timings;
+          const timingSummary = `
+Page Resources: ${timings.totalResources} total
+Render blocking: ${timings.renderBlockingCount}
+Scripts: ${timings.scripts.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
+Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
+    `;
           console.log(`Analyzing for action: ${info.menuItemId}`);
-          const result = await aiSession.analyzePage(response.content, info.menuItemId, targetLanguage);
-          chrome.tabs.sendMessage(tab.id, { 
-            type: "SHOW_RESULT", 
-            action: info.menuItemId,
-            success: Boolean(result?.success), 
-            summary: result?.summary ?? result?.error ?? "Unknown error"
-          });
+          const result = await aiSession.analyzePage(response.content, timingSummary, info.menuItemId, targetLanguage);
+
+          if(info.menuItemId === 'quality') {
+            chrome.tabs.sendMessage(tab.id, { 
+              type: "SHOW_QUALITY_RESULT", 
+              action: info.menuItemId,
+              success: Boolean(result?.success), 
+              summary: result?.summary ?? result?.error ?? "Unknown error",
+              timings: timings
+            });
+          } else {
+            chrome.tabs.sendMessage(tab.id, { 
+              type: "SHOW_SUMMARY_RESULT", 
+              action: info.menuItemId,
+              success: Boolean(result?.success), 
+              summary: result?.summary ?? result?.error ?? "Unknown error"
+            });
+          }
         }
       );
     })
