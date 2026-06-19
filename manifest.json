@@ -23,8 +23,12 @@
         "./content/utils/pageTimings.js",
         "./content/lib/Readability.js",
         "content/lib/marked.min.js",
+        "./content/ui/styles.js",
+        "./content/ui/resizable.js",
+        "./content/ui/shadow-dom.js",
+        "./content/ui/quality-popup.js",
+        "./content/ui/base-popup.js",
         "./content/ui/overlay.js",
-        "./content/services/showResult.js",
         "./content/services/contentExtractor.js",
         "./content/services/pageAnalyzer.js",
         "./content/content.js"

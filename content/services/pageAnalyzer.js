@@ -9,7 +9,6 @@ async function analyzePage(sendResponse) {
     return;
   }
 
-  showOverlay("Wayback Machine AI Extension", "⏳ Analyzing page...");
   const timings = getPageTimings();
   sendResponse({ content, timings });
 }
