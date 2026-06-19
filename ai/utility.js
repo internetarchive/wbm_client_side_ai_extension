@@ -20,7 +20,7 @@ export class AISession {
         } 
     }
 
-    async analyzePage(pageContent,  timingSummary, action, targetLanguage) {
+    async analyzePage(pageContent,  timingSummary, action, targetLanguage, tabId) {
         try {
             if (!this.session) {
                 await this.init();
@@ -36,11 +36,33 @@ export class AISession {
                 prompt = `Analyze this archived web page and determine: 1) Is this a real page or a soft-404 error page? 2) Does the content seem complete or broken? Answer in 2-3 sentences: ${pageContent} \n\nLoad Stats:\n ${timingSummary}`;
             } 
             console.time(action);
-            const result = await this.session.prompt(prompt);
-            console.timeEnd(action);
+            const stream = await this.session.promptStreaming(prompt);
 
+            chrome.tabs.sendMessage(tabId, {
+                type: "STREAM_START",
+                action
+            });
+
+            let fullText = "";
+
+            for await (const chunk of stream) {
+                fullText += chunk;
+                chrome.tabs.sendMessage(tabId, {
+                    type: "STREAM_CHUNK",
+                    chunk
+                });
+            }
+
+            chrome.tabs.sendMessage(tabId, {
+                type: "STREAM_END"
+            });
+            console.timeEnd(action);
+            
             if (targetLanguage && targetLanguage !== 'en') {
-                const translated = await this.translateResult(result, targetLanguage);
+                chrome.tabs.sendMessage(tabId, {
+                    type: "SHOW_TRANSLATING"
+                })
+                const translated = await this.translateResult(fullText, targetLanguage);
                 return {
                     success: true,
                     summary: translated,
@@ -48,13 +70,24 @@ export class AISession {
             }
             return {
                 success: true,
-                summary: result,
+                summary: fullText,
             };
         } catch (error) {
+            if(targetLanguage && targetLanguage !== 'en') {
+                const translatedError = await this.translateResult(error.message, targetLanguage);
+                chrome.tabs.sendMessage(tabId,{
+                    type:"STREAM_ERROR",
+                    error:translatedError
+                });
+                return {
+                    success: false,
+                    error: translatedError,
+                };
+            }
             return {
                 success: false,
-                error: error.message,
-            };
+                error: error.message
+            }
         }
     }
 

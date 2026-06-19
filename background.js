@@ -102,23 +102,26 @@ Scripts: ${timings.scripts.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
 Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
     `;
           console.log(`Analyzing for action: ${info.menuItemId}`);
-          const result = await aiSession.analyzePage(response.content, timingSummary, info.menuItemId, targetLanguage);
 
-          if(info.menuItemId === 'quality') {
-            chrome.tabs.sendMessage(tab.id, { 
-              type: "SHOW_QUALITY_RESULT", 
+          const result = await aiSession.analyzePage(response.content,timingSummary, info.menuItemId, targetLanguage, tab.id);
+          
+          if(info.menuItemId === "summarize") {
+            chrome.tabs.sendMessage(tab.id, {
+              type: "TRANSLATED_RESULT",
               action: info.menuItemId,
-              success: Boolean(result?.success), 
-              summary: result?.summary ?? result?.error ?? "Unknown error",
+              success: Boolean(result?.success),
+              summary: result?.summary ?? result?.error
+            })
+          }
+
+          else if (info.menuItemId === "quality") {
+            chrome.tabs.sendMessage(tab.id, {
+              type: "TIMING_RESULT",
+              action: info.menuItemId,
+              success: Boolean(result?.success),
+              summary: result?.summary ?? result?.error,
               timings: timings
-            });
-          } else {
-            chrome.tabs.sendMessage(tab.id, { 
-              type: "SHOW_SUMMARY_RESULT", 
-              action: info.menuItemId,
-              success: Boolean(result?.success), 
-              summary: result?.summary ?? result?.error ?? "Unknown error"
-            });
+            })
           }
         }
       );

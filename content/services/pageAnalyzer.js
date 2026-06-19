@@ -1,6 +1,8 @@
 async function analyzePage(sendResponse) {
 
   const content = extractPageContent();
+
+  console.log(content.length);
   
   if (content.length < 100) {
     console.log("Not enough content to analyze");
@@ -9,7 +11,6 @@ async function analyzePage(sendResponse) {
     return;
   }
 
-  showOverlay("Wayback Machine AI Extension", "⏳ Analyzing page...");
   const timings = getPageTimings();
   sendResponse({ content, timings });
 }
