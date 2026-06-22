@@ -102,14 +102,20 @@ Scripts: ${timings.scripts.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
 Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
     `;
           console.log(`Analyzing for action: ${info.menuItemId}`);
-          const result = await aiSession.analyzePage(response.content,timingSummary, info.menuItemId, targetLanguage, tab.id);
+
+          const [analysisResult, insights] = await Promise.all([
+            aiSession.analyzePage(response.content, timingSummary, info.menuItemId, targetLanguage, tab.id),
+            info.menuItemId === "summarize"
+              ? aiSession.getStructuredInsights(response.content)
+              : Promise.resolve({ faqs: [], famousPeople: [] })
+          ]);
 
           if(info.menuItemId === "summarize") {
             chrome.tabs.sendMessage(tab.id, {
               type: "TRANSLATED_RESULT",
               action: info.menuItemId,
-              success: Boolean(result?.success),
-              summary: result?.summary ?? result?.error
+              success: Boolean(analysisResult?.success),
+              summary: analysisResult?.summary ?? analysisResult?.error
             })
           }
 
@@ -117,10 +123,17 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
             chrome.tabs.sendMessage(tab.id, {
               type: "TIMING_RESULT",
               action: info.menuItemId,
-              success: Boolean(result?.success),
-              summary: result?.summary ?? result?.error,
+              success: Boolean(analysisResult?.success),
+              summary: analysisResult?.summary ?? analysisResult?.error,
               timings: timings
             })
+          }
+
+          if (insights && (insights.faqs?.length || insights.famousPeople?.length)) {
+            chrome.tabs.sendMessage(tab.id, {
+              type: "STRUCTURED_INSIGHTS",
+              insights
+            });
           }
         }
       );

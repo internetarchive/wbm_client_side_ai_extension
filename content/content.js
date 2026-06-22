@@ -1,3 +1,5 @@
+let pendingInsights = null;
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const action = request.action;
   if(request.type === "REQUEST_CONTENT") {
@@ -20,12 +22,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   }
 
+  else if (request.type === "STREAM_END") {
+    showStreamingLoading();
+  }
+
   else if (request.type === "TRANSLATED_RESULT") {
     showOverlay(action, request.summary);
+    if (pendingInsights) {
+      appendInsights(currentContentElement, pendingInsights);
+      pendingInsights = null;
+    }
   }
 
   else if (request.type === "TIMING_RESULT") {
     showOverlay(action, request.summary, request.timings);
+  }
+
+  else if (request.type === "STRUCTURED_INSIGHTS") {
+    if (currentContentElement) {
+      appendInsights(currentContentElement, request.insights);
+    } else {
+      pendingInsights = request.insights;
+    }
   }
   
 });
