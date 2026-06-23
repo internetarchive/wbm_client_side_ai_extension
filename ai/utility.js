@@ -29,7 +29,6 @@ export class AISession {
                 if (!this.insightSession) return { faqs: [], famousPeople: [] };
             }
             const prompt = `Based on this archived web page, generate interesting FAQs and notable personalities related to the page's topic.
-
 Return ONLY valid JSON matching this exact schema:
 {
   "faqs": [{ "question": "string", "answer": "string" }],
@@ -138,13 +137,13 @@ ${pageContent}`;
             });
 
             if (availability === 'unavailable') {
-            console.log("Translation unavailable, returning original");
-            return text;
+                console.log("Translation unavailable, returning original");
+                return text;
             }
 
             const translator = await Translator.create({
-            sourceLanguage: detectedLanguage,
-            targetLanguage: targetLanguage
+                sourceLanguage: detectedLanguage,
+                targetLanguage: targetLanguage
             });
 
             const lines = text.split('\n');
@@ -162,6 +161,53 @@ ${pageContent}`;
         } catch (error) {
             console.error("Translation failed:", error);
             return text; 
+        }
+    }
+
+    async translateInsights(insights, targetLanguage) {
+        if (!targetLanguage || targetLanguage === "en") return insights;
+
+        const texts = [];
+
+        insights.faqs?.forEach(faq => {
+            texts.push(faq.question);
+            texts.push(faq.answer);
+        });
+        insights.famousPeople?.forEach(person => texts.push(person));
+
+        if (texts.length === 0) return insights;
+
+        try {
+            const detector = await LanguageDetector.create();
+            const [{ detectedLanguage }] = await detector.detect(texts.join(" "));
+
+            const translator = await Translator.create({
+                sourceLanguage: detectedLanguage,
+                targetLanguage
+            });
+
+            const translated = await Promise.all(
+                texts.map(text => translator.translate(text))
+            );
+            translator.destroy();
+
+            const result = { faqs: [], famousPeople: [] };
+            let idx = 0;
+
+            for (let i = 0; i < (insights.faqs?.length || 0); i++) {
+                result.faqs.push({
+                    question: translated[idx++],
+                    answer: translated[idx++]
+                });
+            }
+            for (let i = 0; i < (insights.famousPeople?.length || 0); i++) {
+                result.famousPeople.push(translated[idx++]);
+            }
+
+            return result;
+        } catch (error) {
+            console.error("Failed to translate insights:", error);
+            return insights;
         }
     }
 }

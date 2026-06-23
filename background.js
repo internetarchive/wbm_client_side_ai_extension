@@ -130,9 +130,12 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
           }
 
           if (insights && (insights.faqs?.length || insights.famousPeople?.length)) {
+            const translatedInsights = targetLanguage && targetLanguage !== "en"
+              ? await aiSession.translateInsights(insights, targetLanguage)
+              : insights;
             chrome.tabs.sendMessage(tab.id, {
               type: "STRUCTURED_INSIGHTS",
-              insights
+              insights: translatedInsights
             });
           }
         }

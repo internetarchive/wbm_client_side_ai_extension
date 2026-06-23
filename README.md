@@ -11,7 +11,8 @@ main
             ├── feature/streaming-response    ← Adds streaming AI response
             │
             └── feature/resizable-minimize-overlay   ← Refactored UI + resizable/minimize
-                 └── feature/faqs-famous-persons     ← (current) FAQs + famous people insights
+                 └── feature/faqs-famous-persons     ← FAQs + famous people insights
+                      └── feature/translate-faqs-insights    ← (current) Translation for all outputs
 ```
 
 - **`main`** — Initial project setup
@@ -20,6 +21,7 @@ main
 - **`feature/streaming-response`** — Real-time streaming of AI responses via Gemini Nano
 - **`feature/resizable-minimize-overlay`** — Shadow DOM isolation, resizable/minimizable popup, refactored into modular UI files
 - **`feature/faqs-famous-persons`** — Structured insights (FAQs + famous people) alongside streamed summaries
+- **`feature/translate-faqs-insights`** — Translator API for FAQs, famous people, and summary text
 
 ## Installation (Development)
 
