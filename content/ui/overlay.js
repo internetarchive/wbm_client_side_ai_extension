@@ -6,6 +6,7 @@ function showResultOverlay(summary) {
   const { popup, content } = createBasePopup("AI Result");
   content.innerHTML = `<p style="padding: 12px 16px; font-size: 13.5px; color: #8e8e93;">${summary}</p>`;
   shadow.appendChild(popup);
+  setupMinimizeBehavior(shadow, popup);
 }
 
 function createStreamingOverlay(action, targetLanguage, showInsights) {
@@ -68,6 +69,8 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
 
   content.innerHTML = html;
   shadow.appendChild(popup);
+
+  setupMinimizeBehavior(shadow, popup);
 
   content.querySelectorAll('.wbm-accordion-header').forEach(header => {
     header.addEventListener('click', () => {
