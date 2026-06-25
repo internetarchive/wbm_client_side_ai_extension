@@ -1,4 +1,4 @@
-function qualityPopup (timings, result) {
+function qualityPopup(timings) {
     const totalRes = timings?.totalResources;
     const scriptCount = (timings?.grouped["script"] || []).length;
     const cssCount = (timings?.grouped["css"] || []).length;
@@ -6,11 +6,8 @@ function qualityPopup (timings, result) {
     const otherCount = totalRes - scriptCount - cssCount - imgCount;
 
     const barWidth = (count) => Math.round((count / Math.max(totalRes, 1)) * 100);
+
     const timingHTML = `
-      <div class="wbm-section">
-        <div class="wbm-section-title">AI Analysis</div>
-        <div class="wbm-ai-result">${marked.parse(result)}</div>
-      </div>
       <div class="wbm-section">
         
         <div class="wbm-section-title">📊 Resource Breakdown</div>

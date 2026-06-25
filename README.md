@@ -12,7 +12,8 @@ main
             │
             └── feature/resizable-minimize-overlay   ← Refactored UI + resizable/minimize
                  └── feature/faqs-famous-persons     ← FAQs + famous people insights
-                      └── feature/translate-faqs-insights    ← (current) Translation for all outputs
+                       └── feature/translate-faqs-insights    ← Translation for all outputs
+                            └── feature/accordion-tab-view    ← (current) Accordion + tab UI
 ```
 
 - **`main`** — Initial project setup
@@ -22,6 +23,7 @@ main
 - **`feature/resizable-minimize-overlay`** — Shadow DOM isolation, resizable/minimizable popup, refactored into modular UI files
 - **`feature/faqs-famous-persons`** — Structured insights (FAQs + famous people) alongside streamed summaries
 - **`feature/translate-faqs-insights`** — Translator API for FAQs, famous people, and summary text
+- **`feature/accordion-tab-view`** — Accordion containers, tab switching, and unified loading states
 
 ## Installation (Development)
 

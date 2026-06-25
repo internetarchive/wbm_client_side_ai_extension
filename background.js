@@ -110,33 +110,31 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
               : Promise.resolve({ faqs: [], famousPeople: [] })
           ]);
 
-          if(info.menuItemId === "summarize") {
-            chrome.tabs.sendMessage(tab.id, {
-              type: "TRANSLATED_RESULT",
-              action: info.menuItemId,
-              success: Boolean(analysisResult?.success),
-              summary: analysisResult?.summary ?? analysisResult?.error
-            })
-          }
-
-          else if (info.menuItemId === "quality") {
-            chrome.tabs.sendMessage(tab.id, {
-              type: "TIMING_RESULT",
-              action: info.menuItemId,
-              success: Boolean(analysisResult?.success),
-              summary: analysisResult?.summary ?? analysisResult?.error,
-              timings: timings
-            })
-          }
+          chrome.tabs.sendMessage(tab.id, {
+            type: "TRANSLATED_RESULT",
+            action: info.menuItemId,
+            success: Boolean(analysisResult?.success),
+            summary: analysisResult?.summary ?? analysisResult?.error,
+            originalSummary: analysisResult?.originalSummary,
+            timings: info.menuItemId === "quality" ? timings : undefined,
+            targetLanguage
+          })
 
           if (insights && (insights.faqs?.length || insights.famousPeople?.length)) {
-            const translatedInsights = targetLanguage && targetLanguage !== "en"
-              ? await aiSession.translateInsights(insights, targetLanguage)
-              : insights;
-            chrome.tabs.sendMessage(tab.id, {
-              type: "STRUCTURED_INSIGHTS",
-              insights: translatedInsights
-            });
+            if (targetLanguage && targetLanguage !== "en") {
+              const translatedInsights = await aiSession.translateInsights(insights, targetLanguage);
+              chrome.tabs.sendMessage(tab.id, {
+                type: "STRUCTURED_INSIGHTS",
+                insights,
+                translatedInsights,
+                targetLanguage
+              });
+            } else {
+              chrome.tabs.sendMessage(tab.id, {
+                type: "STRUCTURED_INSIGHTS",
+                insights
+              });
+            }
           }
         }
       );

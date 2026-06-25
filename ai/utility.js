@@ -77,7 +77,8 @@ ${pageContent}`;
 
             chrome.tabs.sendMessage(tabId, {
                 type: "STREAM_START",
-                action
+                action,
+                targetLanguage
             });
 
             let fullText = "";
@@ -100,11 +101,13 @@ ${pageContent}`;
                 return {
                     success: true,
                     summary: translated,
+                    originalSummary: fullText
                 };
             }
             return {
                 success: true,
                 summary: fullText,
+                originalSummary: fullText
             };
         } catch (error) {
             if(targetLanguage && targetLanguage !== 'en') {
