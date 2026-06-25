@@ -9,8 +9,24 @@ export class AISession {
             console.log("AI availability:", availability);
             if(availability === "available") {
                 [this.session, this.insightSession] = await Promise.all([
-                    LanguageModel.create({ expectedOutputLanguages: ["en"] }),
-                    LanguageModel.create({ expectedOutputLanguages: ["en"] })
+                    LanguageModel.create({
+                        expectedOutputLanguages: ["en"],
+                        initialPrompts: [
+                            {
+                                role: "system",
+                                content: "You are a helpful assistant that analyzes archived web pages from the Wayback Machine. Provide concise, accurate summaries and quality assessments."
+                            }
+                        ]
+                    }),
+                    LanguageModel.create({
+                        expectedOutputLanguages: ["en"],
+                        initialPrompts: [
+                            {
+                                role: "system",
+                                content: "You are a structured data extraction assistant. Always respond with valid JSON in the exact schema requested. Do not include markdown, code fences, or explanations outside the JSON."
+                            }
+                        ]
+                    })
                 ]);
                 console.log("AI sessions created successfully!");
             }
@@ -28,25 +44,42 @@ export class AISession {
                 await this.init();
                 if (!this.insightSession) return { faqs: [], famousPeople: [] };
             }
+
+            const schema = {
+                type: "object",
+                properties: {
+                    faqs: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                question: { type: "string" },
+                                answer: { type: "string" }
+                            },
+                            required: ["question", "answer"],
+                            additionalProperties: false
+                        }
+                    },
+                    famousPeople: {
+                        type: "array",
+                        items: { type: "string" }
+                    }
+                },
+                required: ["faqs", "famousPeople"],
+                additionalProperties: false
+            };
+
             const prompt = `Based on this archived web page, generate interesting FAQs and notable personalities related to the page's topic.
-Return ONLY valid JSON matching this exact schema:
-{
-  "faqs": [{ "question": "string", "answer": "string" }],
-  "famousPeople": ["string"]
-}
 
 Rules:
 - FAQs: 3-5 interesting questions with clear, informative answers
 - famousPeople: 2-4 notable personalities associated with this topic
-- No explanations, no markdown, no code fences \u2014 pure JSON only.
 
 Page content:
 ${pageContent}`;
 
-            const result = await this.insightSession.prompt(prompt);
-
-            const jsonStr = result.replace(/```(?:json)?\s*([\s\S]*?)\s*```/g, '$1').trim();
-            const parsed = JSON.parse(jsonStr);
+            const result = await this.insightSession.prompt(prompt, { responseConstraint: schema });
+            const parsed = JSON.parse(result);
             return {
                 faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
                 famousPeople: Array.isArray(parsed.famousPeople) ? parsed.famousPeople : []
