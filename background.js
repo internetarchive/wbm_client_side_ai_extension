@@ -89,8 +89,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     chrome.storage.sync.get(['targetLanguage'], async (result) => {
       const targetLanguage = result.targetLanguage || 'en';
       chrome.tabs.sendMessage(
-        tab.id, 
-        { type: "REQUEST_CONTENT", action: info.menuItemId }, 
+        tab.id,
+        { type: "REQUEST_CONTENT", action: info.menuItemId },
         async (response) => {
           if (!response || !response.content) return;
 
@@ -103,8 +103,18 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
     `;
           console.log(`Analyzing for action: ${info.menuItemId}`);
 
+          let screenshotBlob, screenshotDataUrl;
+          if (info.menuItemId === "quality") {
+            try {
+              screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
+              screenshotBlob = await fetch(screenshotDataUrl).then(r => r.blob());
+            } catch (e) {
+              console.log("Screenshot capture failed, proceeding without it:", e);
+            }
+          }
+
           const [analysisResult, insights] = await Promise.all([
-            aiSession.analyzePage(response.content, timingSummary, info.menuItemId, targetLanguage, tab.id),
+            aiSession.analyzePage(response.content, timingSummary, info.menuItemId, targetLanguage, tab.id, screenshotBlob),
             info.menuItemId === "summarize"
               ? aiSession.getStructuredInsights(response.content)
               : Promise.resolve({ faqs: [], famousPeople: [] })
@@ -117,7 +127,8 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
             summary: analysisResult?.summary ?? analysisResult?.error,
             originalSummary: analysisResult?.originalSummary,
             timings: info.menuItemId === "quality" ? timings : undefined,
-            targetLanguage
+            targetLanguage,
+            screenshot: info.menuItemId === "quality" ? screenshotDataUrl : undefined
           })
 
           if (insights && (insights.faqs?.length || insights.famousPeople?.length)) {

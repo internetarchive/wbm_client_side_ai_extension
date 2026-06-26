@@ -9,6 +9,8 @@ function showResultOverlay(summary) {
   setupMinimizeBehavior(shadow, popup);
 }
 
+let screenshotDataUrl = null;
+
 function createStreamingOverlay(action, targetLanguage, showInsights) {
   const shadow = createShadowHost();
   const { popup, content } = createBasePopup(action);
@@ -44,6 +46,16 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
     html +=   `</div>`;
   }
 
+  if (action === "quality") {
+    html +=   `<div class="wbm-accordion" data-type="screenshot">`;
+    html +=     `<div class="wbm-accordion-header" role="button" tabindex="0">`;
+    html +=       `<span class="wbm-accordion-icon">▶</span>`;
+    html +=       `<span>Screenshot</span>`;
+    html +=     `</div>`;
+    html +=     `<div class="wbm-accordion-body"><div class="wbm-loading-container"><div class="wbm-spinner"></div></div></div>`;
+    html +=   `</div>`;
+  }
+
   html += `</div>`;
 
   if (hasTabs) {
@@ -63,6 +75,15 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
     html +=     `</div>`;
     html +=     `<div class="wbm-accordion-body"><div class="wbm-loading-container"><div class="wbm-spinner"></div></div></div>`;
     html +=   `</div>`;
+    }
+    if (action === "quality") {
+      html +=   `<div class="wbm-accordion" data-type="screenshot">`;
+      html +=     `<div class="wbm-accordion-header" role="button" tabindex="0">`;
+      html +=       `<span class="wbm-accordion-icon">▶</span>`;
+      html +=       `<span>Screenshot</span>`;
+      html +=     `</div>`;
+      html +=     `<div class="wbm-accordion-body"><div class="wbm-loading-container"><div class="wbm-spinner"></div></div></div>`;
+      html +=   `</div>`;
     }
     html += `</div>`;
   }
@@ -197,6 +218,21 @@ function appendInsights(tabLang, insights) {
     };
     el.addEventListener('click', toggle);
     el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  });
+}
+
+function setScreenshot(dataUrl) {
+  screenshotDataUrl = dataUrl;
+  const content = shadowRoot?.getElementById('wbm-ai-content');
+  if (!content || !dataUrl) return;
+
+  const panels = content.querySelectorAll('.wbm-tab-panel');
+  panels.forEach(panel => {
+    const body = panel.querySelector('.wbm-accordion[data-type="screenshot"] .wbm-accordion-body');
+    if (!body) return;
+    const loading = body.querySelector('.wbm-loading-container');
+    if (loading) loading.remove();
+    body.innerHTML = `<img src="${dataUrl}" style="width:100%;border-radius:8px;display:block;border:1px solid #e0e0e0;" alt="Page screenshot">`;
   });
 }
 

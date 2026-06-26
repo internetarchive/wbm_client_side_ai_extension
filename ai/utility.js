@@ -11,6 +11,10 @@ export class AISession {
                 [this.session, this.insightSession] = await Promise.all([
                     LanguageModel.create({
                         expectedOutputLanguages: ["en"],
+                        expectedInputs: [
+                            { type: "text" },
+                            { type: "image" }
+                        ],
                         initialPrompts: [
                             {
                                 role: "system",
@@ -90,11 +94,22 @@ ${pageContent}`;
         }
     }
 
-    async analyzePage(pageContent,  timingSummary, action, targetLanguage, tabId) {
+    async analyzePage(pageContent, timingSummary, action, targetLanguage, tabId, screenshotBlob) {
         try {
             if (!this.session) {
                 await this.init();
             }
+
+            if (action === "quality" && screenshotBlob) {
+                await this.session.append([{
+                    role: "user",
+                    content: [
+                        { type: "image", value: screenshotBlob },
+                        { type: "text", value: "This is a screenshot of the archived web page. Use it alongside the page text to assess visual quality and completeness." }
+                    ]
+                }]);
+            }
+
             let prompt;
 
             console.log(targetLanguage);
@@ -103,10 +118,44 @@ ${pageContent}`;
                 prompt = `Summarize this archived web page in 2-3 sentences:
                     ${pageContent}`;
             } else if(action === "quality") {
-                prompt = `Analyze this archived web page and determine: 1) Is this a real page or a soft-404 error page? 2) Does the content seem complete or broken? Answer in 2-3 sentences: ${pageContent} \n\nLoad Stats:\n ${timingSummary}`;
+                prompt = `Analyze this archived web page in three aspects:
+
+1) Is this a real page or a soft-404 error page?
+2) Does the content seem complete or broken?
+3) Also mention some lines about the screenshot of the page that you are seeing.
+
+Page content:
+${pageContent}
+
+Load Stats:
+${timingSummary}`;
             } 
             console.time(action);
-            const stream = await this.session.promptStreaming(prompt);
+
+            const qualitySchema = {
+                type: "object",
+                properties: {
+                    analysis: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                question: { type: "string" },
+                                answer: { type: "string" }
+                            },
+                            required: ["question", "answer"],
+                            additionalProperties: false
+                        },
+                        minItems: 3,
+                        maxItems: 3
+                    }
+                },
+                required: ["analysis"],
+                additionalProperties: false
+            };
+
+            const streamOptions = action === "quality" ? { responseConstraint: qualitySchema } : {};
+            const stream = await this.session.promptStreaming(prompt, streamOptions);
 
             chrome.tabs.sendMessage(tabId, {
                 type: "STREAM_START",
@@ -123,11 +172,19 @@ ${pageContent}`;
                     chunk
                 });
             }
-            console.timeEnd(action);
 
-            chrome.tabs.sendMessage(tabId, {
-                type: "STREAM_END"
-            });
+            if (action === "quality") {
+                try {
+                    const parsed = JSON.parse(fullText);
+                    if (parsed.analysis && Array.isArray(parsed.analysis)) {
+                        fullText = parsed.analysis.map(item => `**${item.question}**\n\n${item.answer}`).join('\n\n');
+                    }
+                } catch (e) {
+                    console.error("Failed to parse quality JSON:", e);
+                }
+            }
+
+            console.timeEnd(action);
 
             if (targetLanguage && targetLanguage !== 'en') {
                 const translated = await this.translateResult(fullText, targetLanguage);
