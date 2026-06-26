@@ -14,7 +14,7 @@ export class AISession {
                         initialPrompts: [
                             {
                                 role: "system",
-                                content: "You are a helpful assistant that analyzes archived web pages from the Wayback Machine. Provide concise, accurate summaries and quality assessments."
+                                content: "You are a helpful assistant that analyzes archived web pages from the Wayback Machine. Provide concise, accurate summaries and quality assessments based on what the prompt of the user is asking."
                             }
                         ]
                     }),
