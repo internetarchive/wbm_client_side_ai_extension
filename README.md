@@ -29,7 +29,7 @@ main
 - **`feature/accordion-tab-view`** — Accordion containers, tab switching, and unified loading states
 - **`feature/loading-ui-refinements`** — Changed the UI to match the wayback machine colour
 - **`feature/ai-session-enhancements`** — System prompts and responseConstraint for AI sessions
-- **`feature/screenshot-quality-enhancements`** — Viewport screenshot + multimodal AI for quality analysis, quality responseConstraint schema
+- **`feature/screenshot-quality-enhancements`** — Viewport screenshot + multimodal AI for quality analysis, quality responseConstraint schema, instant overlay, clone per session to prevent context leaking
 
 ## Installation (Development)
 
