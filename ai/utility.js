@@ -102,6 +102,15 @@ ${pageContent}`;
                 });
             }
 
+            // Truncate page content to fit remaining context window
+            const remaining = worker.contextWindow - worker.contextUsage;
+            const promptOverhead = 400; // buffer for prompt text + timing stats + response
+            const available = Math.max(remaining - promptOverhead, 100);
+            const charBudget = available * 4; // ~4 chars per token
+            if (pageContent.length > charBudget) {
+              pageContent = pageContent.slice(0, charBudget);
+            }
+
             let prompt;
 
             console.log(targetLanguage);
