@@ -16,7 +16,9 @@ main
                              └── feature/accordion-tab-view    ← Accordion + tab UI
                                    └── feature/loading-ui-refinements   ← Spinner/loading polish
                                          └── feature/ai-session-enhancements  ← System prompts + responseConstraint
-                                                └── feature/screenshot-quality-enhancements  ← (current) Screenshot + quality responseConstraint
+                                                 └── feature/screenshot-quality-enhancements  ← Screenshot + quality + clone perf
+                                                       ├── feature/caching-report  ← Caching architecture docs
+                                                       └── feature/caching-implementation  ← (current) Caching code + StorageCleaner
 ```
 
 - **`main`** — Initial project setup
@@ -30,6 +32,8 @@ main
 - **`feature/loading-ui-refinements`** — Changed the UI to match the wayback machine colour
 - **`feature/ai-session-enhancements`** — System prompts and responseConstraint for AI sessions
 - **`feature/screenshot-quality-enhancements`** — Viewport screenshot + multimodal AI for quality analysis, quality responseConstraint schema, instant overlay, clone per session to prevent context leaking
+- **`feature/caching-report`** — Comprehensive caching implementation report at `docs/CACHING.md`
+- **`feature/caching-implementation`** — V1 caching for summarize with StorageCleaner singleton, cache-by-URL keying, insight cache, and 30-day TTL eviction
 
 ## Installation (Development)
 
