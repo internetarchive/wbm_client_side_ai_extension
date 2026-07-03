@@ -26,9 +26,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   else if (request.type === "TRANSLATED_RESULT") {
     const hasTabs = shadowRoot?.querySelector('.wbm-tab-bar');
     if (hasTabs) {
-      if (request.action === "quality") {
-        populateTab("en", marked.parse(request.originalSummary || request.summary));
-      }
+      populateTab("en", marked.parse(request.originalSummary || request.summary));
       populateTab(request.targetLanguage, marked.parse(request.summary));
     } else {
       const summaryBody = shadowRoot?.querySelector('.wbm-accordion[data-type="summary"] .wbm-accordion-body');

@@ -1,6 +1,9 @@
 import { AISession } from "./ai/utility.js";
+import { StorageCleaner } from "./ai/storageCleaner.js";
 
 const aiSession = new AISession();
+const storageCleaner = new StorageCleaner();
+storageCleaner.runSweep(30);
 
 chrome.runtime.onInstalled.addListener(async () => {
   chrome.contextMenus.create({
@@ -89,6 +92,40 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     chrome.storage.sync.get(['targetLanguage'], async (result) => {
       const targetLanguage = result.targetLanguage || 'en';
 
+      if (info.menuItemId === "summarize") {
+        const cacheKey = `wbm_summarize_${tab.url}_${targetLanguage}`;
+        const cachedData = await chrome.storage.local.get([cacheKey]);
+
+        if (cachedData[cacheKey]) {
+          console.log(`[Cache] HIT for ${cacheKey}. Serving instantly.`);
+          const { timestamp, ...cachedPayload } = cachedData[cacheKey];
+
+          chrome.tabs.sendMessage(tab.id, {
+            type: "STREAM_START",
+            action: info.menuItemId,
+            targetLanguage
+          });
+
+          chrome.tabs.sendMessage(tab.id, {
+            type: "TRANSLATED_RESULT",
+            ...cachedPayload
+          });
+
+          chrome.tabs.sendMessage(tab.id, { type: "STREAM_END" });
+
+          const insightKey = `wbm_insights_${tab.url}_${targetLanguage}`;
+          const cachedInsights = await chrome.storage.local.get([insightKey]);
+          if (cachedInsights[insightKey]) {
+            const { timestamp: _t, ...insightPayload } = cachedInsights[insightKey];
+            chrome.tabs.sendMessage(tab.id, {
+              type: "STRUCTURED_INSIGHTS",
+              ...insightPayload
+            });
+          }
+          return;
+        }
+      }
+
       chrome.tabs.sendMessage(tab.id, {
         type: "STREAM_START",
         action: info.menuItemId,
@@ -127,32 +164,53 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
               : Promise.resolve({ faqs: [], famousPeople: [] })
           ]);
 
-          chrome.tabs.sendMessage(tab.id, {
-            type: "TRANSLATED_RESULT",
+          const resultPayload = {
             action: info.menuItemId,
             success: Boolean(analysisResult?.success),
             summary: analysisResult?.summary ?? analysisResult?.error,
             originalSummary: analysisResult?.originalSummary,
             timings: info.menuItemId === "quality" ? timings : undefined,
-            targetLanguage,
-            screenshot: info.menuItemId === "quality" ? screenshotDataUrl : undefined
-          })
+            targetLanguage
+          };
 
-          if (insights && (insights.faqs?.length || insights.famousPeople?.length)) {
+          // Cache successful summarize result (screenshot excluded — see cache-report.md §6.2)
+          if (analysisResult?.success && info.menuItemId === "summarize") {
+            const cacheKey = `wbm_summarize_${tab.url}_${targetLanguage}`;
+            await chrome.storage.local.set({
+              [cacheKey]: {
+                ...resultPayload,
+                timestamp: Date.now()
+              }
+            });
+          }
+
+          chrome.tabs.sendMessage(tab.id, {
+            type: "TRANSLATED_RESULT",
+            screenshot: info.menuItemId === "quality" ? screenshotDataUrl : undefined,
+            ...resultPayload
+          });
+
+          // Cache & send insights (summarize only)
+          if (info.menuItemId === "summarize" && insights && (insights.faqs?.length || insights.famousPeople?.length)) {
+            const insightPayload = { insights };
+
             if (targetLanguage && targetLanguage !== "en") {
-              const translatedInsights = await aiSession.translateInsights(insights, targetLanguage);
-              chrome.tabs.sendMessage(tab.id, {
-                type: "STRUCTURED_INSIGHTS",
-                insights,
-                translatedInsights,
-                targetLanguage
-              });
-            } else {
-              chrome.tabs.sendMessage(tab.id, {
-                type: "STRUCTURED_INSIGHTS",
-                insights
-              });
+              insightPayload.translatedInsights = await aiSession.translateInsights(insights, targetLanguage);
+              insightPayload.targetLanguage = targetLanguage;
             }
+
+            const insightKey = `wbm_insights_${tab.url}_${targetLanguage}`;
+            await chrome.storage.local.set({
+              [insightKey]: {
+                ...insightPayload,
+                timestamp: Date.now()
+              }
+            });
+
+            chrome.tabs.sendMessage(tab.id, {
+              type: "STRUCTURED_INSIGHTS",
+              ...insightPayload
+            });
           }
         }
       );
