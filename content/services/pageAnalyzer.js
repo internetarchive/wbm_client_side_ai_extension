@@ -1,5 +1,10 @@
-async function analyzePage(sendResponse) {
+async function analyzePage(sendResponse, action) {
 
+  if(action === "quality") {
+    const timings = getPageTimings();
+    sendResponse({ content: null, timings });
+    return;
+  }
   const content = extractPageContent();
   
   if (content.length < 100) {
@@ -9,6 +14,6 @@ async function analyzePage(sendResponse) {
     return;
   }
 
-  const timings = getPageTimings();
+  
   sendResponse({ content, timings });
 }

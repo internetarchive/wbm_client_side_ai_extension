@@ -18,7 +18,9 @@ main
                                          └── feature/ai-session-enhancements  ← System prompts + responseConstraint
                                                  └── feature/screenshot-quality-enhancements  ← Screenshot + quality + clone perf
                                                        ├── feature/caching-report  ← Caching architecture docs
-                                                       └── feature/caching-implementation  ← (current) Caching code + StorageCleaner
+                                                        ├── feature/caching-report  ← Caching architecture docs
+                                                        ├── feature/caching-implementation  ← Caching code + StorageCleaner
+                                                        └── feature/quality-context-window  ← (current) Fix multimodal quality: inline image in promptStreaming, remove page content from quality
 ```
 
 - **`main`** — Initial project setup
@@ -34,6 +36,7 @@ main
 - **`feature/screenshot-quality-enhancements`** — Viewport screenshot + multimodal AI for quality analysis, quality responseConstraint schema, instant overlay, clone per session to prevent context leaking
 - **`feature/caching-report`** — Comprehensive caching implementation report at `docs/CACHING.md`
 - **`feature/caching-implementation`** — V1 caching for summarize with StorageCleaner singleton, cache-by-URL keying, insight cache, and 30-day TTL eviction
+- **`feature/quality-context-window`** — Fix multimodal quality: pass image inline with promptStreaming instead of append(), remove page content from quality analysis to save context, skip content extraction for quality in pageAnalyzer
 
 ## Installation (Development)
 

@@ -1,7 +1,7 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const action = request.action;
   if(request.type === "REQUEST_CONTENT") {
-    analyzePage(sendResponse);
+    analyzePage(sendResponse, action);
     return true;
   }
 
