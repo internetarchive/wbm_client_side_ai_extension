@@ -23,7 +23,12 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
   if (hasTabs) {
     html += `<div class="wbm-tab-bar">`;
     html += `<button class="wbm-tab wbm-tab-active" data-lang="en">English</button>`;
-    html += `<button class="wbm-tab" data-lang="${targetLanguage}">${langLabel}</button>`;
+    html += `<button class="wbm-tab wbm-lang-tab" data-lang="${targetLanguage}">${langLabel}</button>`;
+    html += `<select class="wbm-lang-select" aria-label="Change language">`;
+    LANGUAGES.forEach(l => {
+      html += `<option value="${l.code}"${l.code === targetLanguage ? ' selected' : ''}>${l.name}</option>`;
+    });
+    html += `</select>`;
     html += `</div>`;
   }
 
@@ -104,15 +109,27 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
   });
 
   if (hasTabs) {
-    content.querySelectorAll('.wbm-tab').forEach(tab => {
+    content.querySelectorAll('.wbm-tab, .wbm-lang-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const lang = tab.dataset.lang;
-        content.querySelectorAll('.wbm-tab').forEach(t => t.classList.remove('wbm-tab-active'));
+        content.querySelectorAll('.wbm-tab, .wbm-lang-tab').forEach(t => t.classList.remove('wbm-tab-active'));
         tab.classList.add('wbm-tab-active');
         content.querySelectorAll('.wbm-tab-panel').forEach(p => p.style.display = 'none');
         const panel = content.querySelector(`.wbm-tab-panel[data-lang="${lang}"]`);
         if (panel) panel.style.display = 'block';
       });
+    });
+    content.querySelector('.wbm-lang-select').addEventListener('change', function() {
+      const newLang = this.value;
+      const langTab = content.querySelector('.wbm-lang-tab');
+      if (langTab) {
+        langTab.textContent = getLanguageDisplayName(newLang);
+        langTab.dataset.lang = newLang;
+        langTab.click();
+      }
+      if (window.__onLanguageChange) {
+        window.__onLanguageChange(newLang);
+      }
     });
   }
 
@@ -236,24 +253,26 @@ function setScreenshot(dataUrl) {
   });
 }
 
+const LANGUAGES = [
+  { code: "hi", name: "हिन्दी" },
+  { code: "bn", name: "বাংলা" },
+  { code: "es", name: "Español" },
+  { code: "fr", name: "Français" },
+  { code: "de", name: "Deutsch" },
+  { code: "ja", name: "日本語" },
+  { code: "zh", name: "中文" },
+  { code: "ko", name: "한국어" },
+  { code: "pt", name: "Português" },
+  { code: "ru", name: "Русский" },
+  { code: "ar", name: "العربية" },
+  { code: "it", name: "Italiano" },
+  { code: "nl", name: "Nederlands" },
+  { code: "tr", name: "Türkçe" },
+  { code: "vi", name: "Tiếng Việt" },
+  { code: "th", name: "ไทย" }
+];
+
 function getLanguageDisplayName(lang) {
-  const names = {
-    "hi": "हिन्दी",
-    "bn": "বাংলা",
-    "es": "Español",
-    "fr": "Français",
-    "de": "Deutsch",
-    "ja": "日本語",
-    "zh": "中文",
-    "ko": "한국어",
-    "pt": "Português",
-    "ru": "Русский",
-    "ar": "العربية",
-    "it": "Italiano",
-    "nl": "Nederlands",
-    "tr": "Türkçe",
-    "vi": "Tiếng Việt",
-    "th": "ไทย"
-  };
-  return names[lang] || lang;
+  const found = LANGUAGES.find(l => l.code === lang);
+  return found ? found.name : lang;
 }
