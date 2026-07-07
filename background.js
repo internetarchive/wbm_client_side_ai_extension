@@ -147,12 +147,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         { type: "REQUEST_CONTENT", action: info.menuItemId },
         async (response) => {
           if (!response || (info.menuItemId === "summarize" && !response.content)) return;
-          
+
           let timingSummary = '';
+          let timings = null;
 
           if(response.timings == null) timingSummary = '';
           else {
-          const timings = response.timings;
+          timings = response.timings;
           timingSummary = `
 Page Resources: ${timings.totalResources} total
 Render blocking: ${timings.renderBlockingCount}
