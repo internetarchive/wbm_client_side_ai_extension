@@ -117,6 +117,7 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
         content.querySelectorAll('.wbm-tab-panel').forEach(p => p.style.display = 'none');
         const panel = content.querySelector(`.wbm-tab-panel[data-lang="${lang}"]`);
         if (panel) panel.style.display = 'block';
+        requestAnimationFrame(() => updateTooltipAlignment());
       });
     });
     content.querySelector('.wbm-lang-select').addEventListener('change', function() {
@@ -216,8 +217,16 @@ function appendInsights(tabLang, insights) {
     if (!insights.faqs?.length) html += '<div class="wbm-insights-section">';
     html += '<div class="wbm-insights-title">Famous Personalities</div>';
     html += '<div class="wbm-famous-list">';
-    insights.famousPeople.forEach(person => {
-      html += `<span class="wbm-famous-chip">${escapeHtml(person)}</span>`;
+    insights.famousPeople.forEach((person, i) => {
+      const originalPerson = insights.famousPeopleOriginal?.[i];
+      const wikiName = originalPerson?.name || person.name;
+      const wikiUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(wikiName.replace(/ /g, '_'))}`;
+      const name = escapeHtml(person.name);
+      const desc = escapeHtml(person.description);
+      html += `<div class="wbm-famous-wrapper">
+        <a href="${wikiUrl}" target="_blank" rel="noopener noreferrer" class="wbm-famous-chip">${name}</a>
+        <div class="wbm-famous-tooltip">${desc}</div>
+      </div>`;
     });
     html += '</div></div>';
   }
@@ -235,6 +244,16 @@ function appendInsights(tabLang, insights) {
     };
     el.addEventListener('click', toggle);
     el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  });
+  requestAnimationFrame(() => updateTooltipAlignment());
+}
+
+function updateTooltipAlignment() {
+  shadowRoot?.querySelectorAll('.wbm-famous-wrapper').forEach(wrapper => {
+    const rect = wrapper.getBoundingClientRect();
+    const tooltipWidth = 220;
+    const spaceOnRight = window.innerWidth - rect.left;
+    wrapper.classList.toggle('wbm-align-right', spaceOnRight < tooltipWidth + 24);
   });
 }
 

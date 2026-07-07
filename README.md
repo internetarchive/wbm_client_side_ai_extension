@@ -2,42 +2,6 @@
 
 Google Summer of Code (GSoC) 2026 Wayback Machine Client-Side AI Extension project
 
-## Branch Structure
-
-```
-main
-  └── sudipta/extension-setup
-       └── feature/right-click-menu          ← Parent branch, base for all features
-            ├── feature/streaming-response    ← Adds streaming AI response
-            │
-            └── feature/resizable-minimize-overlay   ← Refactored UI + resizable/minimize
-                 └── feature/faqs-famous-persons     ← FAQs + famous people insights
-                       └── feature/translate-faqs-insights    ← Translation for all outputs
-                             └── feature/accordion-tab-view    ← Accordion + tab UI
-                                   └── feature/loading-ui-refinements   ← Spinner/loading polish
-                                         └── feature/ai-session-enhancements  ← System prompts + responseConstraint
-                                                 └── feature/screenshot-quality-enhancements  ← Screenshot + quality + clone perf
-                                                       ├── feature/caching-report  ← Caching architecture docs
-                                                        ├── feature/caching-report  ← Caching architecture docs
-                                                        ├── feature/caching-implementation  ← Caching code + StorageCleaner
-                                                        └── feature/quality-context-window  ← (current) Fix multimodal quality: inline image in promptStreaming, remove page content from quality
-```
-
-- **`main`** — Initial project setup
-- **`sudipta/extension-setup`** — Development environment setup
-- **`feature/right-click-menu`** — Context menu integration with network timing and quality analysis
-- **`feature/streaming-response`** — Real-time streaming of AI responses via Gemini Nano
-- **`feature/resizable-minimize-overlay`** — Shadow DOM isolation, resizable/minimizable popup, refactored into modular UI files
-- **`feature/faqs-famous-persons`** — Structured insights (FAQs + famous people) alongside streamed summaries
-- **`feature/translate-faqs-insights`** — Translator API for FAQs, famous people, and summary text
-- **`feature/accordion-tab-view`** — Accordion containers, tab switching, and unified loading states
-- **`feature/loading-ui-refinements`** — Changed the UI to match the wayback machine colour
-- **`feature/ai-session-enhancements`** — System prompts and responseConstraint for AI sessions
-- **`feature/screenshot-quality-enhancements`** — Viewport screenshot + multimodal AI for quality analysis, quality responseConstraint schema, instant overlay, clone per session to prevent context leaking
-- **`feature/caching-report`** — Comprehensive caching implementation report at `docs/CACHING.md`
-- **`feature/caching-implementation`** — V1 caching for summarize with StorageCleaner singleton, cache-by-URL keying, insight cache, and 30-day TTL eviction
-- **`feature/quality-context-window`** — Fix multimodal quality: pass image inline with promptStreaming instead of append(), remove page content from quality analysis to save context, skip content extraction for quality in pageAnalyzer
-
 ## Installation (Development)
 
 1. Clone the repository
