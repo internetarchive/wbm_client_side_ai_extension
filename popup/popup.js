@@ -14,10 +14,23 @@ document.addEventListener('DOMContentLoaded', () => {
   saveButton.addEventListener('click', () => {
     const selectedLanguage = languageSelect.value;
     chrome.storage.sync.set({ targetLanguage: selectedLanguage }, () => {
-      statusMessage.textContent = 'Settings saved!';
+      statusMessage.textContent = 'Saved!';
       setTimeout(() => {
         statusMessage.textContent = '';
       }, 2000);
+    });
+  });
+
+  document.querySelectorAll('.action-card:not(.action-card--disabled)').forEach(card => {
+    card.addEventListener('click', () => {
+      const action = card.dataset.action;
+      chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+        if (tab) {
+          chrome.runtime.sendMessage({ type: "PERFORM_ACTION", action, tabId: tab.id }, () => {
+            window.close();
+          });
+        }
+      });
     });
   });
 });

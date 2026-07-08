@@ -5,156 +5,262 @@
 }
 
 body {
-    border-radius: 2%;
-    width: 280px;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-    background: rgba(255, 255, 255, 0.55);
-    backdrop-filter: blur(40px) saturate(200%);
-    -webkit-backdrop-filter: blur(40px) saturate(200%);
-    color: #1c1c1e;
+    width: 320px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+    background: #FFFFFF;
+    color: #333333;
     margin: 0;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .container {
-    padding: 16px;
+    padding: 0;
 }
 
-/* Header */
+/* Header — matches result overlay */
 .header {
     display: flex;
     align-items: center;
     gap: 8px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
-    padding-bottom: 12px;
-    margin-bottom: 14px;
+    padding: 14px 18px;
+    background: #AB2D33;
+    border-bottom: 1px solid #8C242A;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #FFFFFF;
 }
 
 .header svg {
-    color: #007aff;
+    color: rgba(255, 255, 255, 0.8);
+    flex-shrink: 0;
 }
 
 .header h1 {
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #1c1c1e;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #FFFFFF;
 }
 
-.description {
-    font-size: 12.5px;
-    color: #6e6e73;
-    margin-bottom: 14px;
-    line-height: 1.5;
+/* Action Grid */
+.action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 16px 18px;
+}
+
+.action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 8px;
+    background: #FAFAFA;
+    border: 1px solid #EAEAEA;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333333;
+    transition: all 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.action-card:hover:not(:disabled) {
+    background: #FFF5F5;
+    border-color: #AB2D33;
+}
+
+.action-card:active:not(:disabled) {
+    opacity: 0.8;
+}
+
+.action-card--disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #FFF0F0;
+    color: #AB2D33;
+}
+
+.action-card:hover:not(:disabled) .action-icon {
+    background: #FFE5E5;
+}
+
+.action-card--disabled .action-icon {
+    background: #F5F5F5;
+    color: #AAAAAA;
+}
+
+.action-label {
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+}
+
+/* Divider */
+.divider {
+    height: 1px;
+    background: #EAEAEA;
+    margin: 0 18px;
 }
 
 /* Settings */
 .setting {
-    margin-bottom: 14px;
+    padding: 14px 18px;
 }
 
 label {
     display: block;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.03em;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #6e6e73;
-    margin-bottom: 6px;
+    color: #666666;
+    margin-bottom: 8px;
 }
 
 select {
     width: 100%;
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    font-size: 13.5px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #EAEAEA;
+    font-size: 13px;
     font-family: inherit;
-    background: rgba(255, 255, 255, 0.6);
-    color: #1c1c1e;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: #FAFAFA;
+    color: #333333;
     appearance: none;
     -webkit-appearance: none;
     cursor: pointer;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.2s ease;
 }
 
 select:focus {
     outline: none;
-    border-color: #007aff;
+    border-color: #AB2D33;
 }
 
-/* Button */
-button {
-    width: 100%;
+/* Button — matches Wayback red */
+#save-button {
+    display: block;
+    width: calc(100% - 36px);
+    margin: 0 18px 14px;
     padding: 9px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     font-family: inherit;
-    color: #ffffff;
-    background: #007aff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #FFFFFF;
+    background: #AB2D33;
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: opacity 0.15s ease;
-    letter-spacing: -0.01em;
+    transition: background 0.2s ease;
 }
 
-button:hover {
-    opacity: 0.85;
+#save-button:hover {
+    background: #8C242A;
 }
 
-button:active {
-    opacity: 0.7;
+#save-button:active {
+    background: #7A1F24;
 }
 
 #status-message {
-    margin-top: 10px;
-    font-size: 12px;
-    color: #34c759;
     text-align: center;
+    font-size: 12px;
+    color: #247500;
     height: 16px;
-    letter-spacing: -0.01em;
+    margin-bottom: 10px;
 }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
     body {
-        background: rgba(28, 28, 30, 0.75);
-        color: #f2f2f7;
+        background: #1C1C1E;
+        color: #F2F2F7;
     }
 
     .header {
-        border-bottom-color: rgba(255, 255, 255, 0.08);
+        background: #8C242A;
+        border-bottom-color: #7A1F24;
     }
 
     .header svg {
-        color: #0a84ff;
+        color: rgba(255, 255, 255, 0.7);
     }
 
-    .header h1 {
-        color: #f2f2f7;
+    .action-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #F2F2F7;
     }
 
-    .description {
-        color: #aeaeb2;
+    .action-card:hover:not(:disabled) {
+        background: rgba(171, 45, 51, 0.15);
+        border-color: #AB2D33;
+    }
+
+    .action-card--disabled {
+        opacity: 0.25;
+    }
+
+    .action-icon {
+        background: rgba(171, 45, 51, 0.15);
+        color: #FF6B70;
+    }
+
+    .action-card:hover:not(:disabled) .action-icon {
+        background: rgba(171, 45, 51, 0.25);
+    }
+
+    .action-card--disabled .action-icon {
+        background: rgba(255, 255, 255, 0.04);
+        color: #636366;
+    }
+
+    .divider {
+        background: rgba(255, 255, 255, 0.1);
     }
 
     label {
-        color: #aeaeb2;
+        color: #AEAEB2;
     }
 
     select {
         background: rgba(255, 255, 255, 0.07);
         border-color: rgba(255, 255, 255, 0.1);
-        color: #f2f2f7;
+        color: #F2F2F7;
     }
 
-    button {
-        background: #0a84ff;
+    select:focus {
+        border-color: #AB2D33;
+    }
+
+    #save-button {
+        background: #AB2D33;
+    }
+
+    #save-button:hover {
+        background: #C9525A;
     }
 
     #status-message {
-        color: #30d158;
+        color: #30D158;
     }
 }

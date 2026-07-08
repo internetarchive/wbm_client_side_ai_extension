@@ -3,25 +3,70 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Wayback Machine Settings</title>
+    <title>Wayback AI</title>
     <link rel="stylesheet" href="./popup.css">
 </head>
 
 <body>
     <div class="container">
         <div class="header">
-            <!-- A simple SVG icon for a modern look -->
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path
-                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5zm4 4h-2v-2h2v2zm0-4h-2V7h2v5z" />
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5zm4 4h-2v-2h2v2zm0-4h-2V7h2v5z" />
             </svg>
-            <h1>Wayback Machine AI Settings</h1>
+            <h1>Wayback AI</h1>
         </div>
 
-        <p class="description">Select your default language for translations.</p>
+        <div class="action-grid">
+            <button class="action-card" data-action="summarize">
+                <span class="action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                </span>
+                <span class="action-label">Summarize</span>
+            </button>
+
+            <button class="action-card" data-action="quality">
+                <span class="action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 12l2 2 4-4"/>
+                        <path d="M12 2a10 10 0 1 0 10 10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                </span>
+                <span class="action-label">Quality</span>
+            </button>
+
+            <button class="action-card action-card--disabled" data-action="compare" disabled title="Coming in next update">
+                <span class="action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="8" height="18" rx="1"/>
+                        <rect x="14" y="3" width="8" height="18" rx="1"/>
+                    </svg>
+                </span>
+                <span class="action-label">Compare</span>
+            </button>
+
+            <button class="action-card action-card--disabled" data-action="info" disabled title="Coming in next update">
+                <span class="action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                </span>
+                <span class="action-label">Page Info</span>
+            </button>
+        </div>
+
+        <div class="divider"></div>
 
         <div class="setting">
-            <label for="language-select">Target Language:</label>
+            <label for="language-select">Target Language</label>
             <select id="language-select">
                 <option value="en">English</option>
                 <option value="es">Spanish</option>
@@ -36,7 +81,7 @@
             </select>
         </div>
 
-        <button id="save-button">Save Settings</button>
+        <button id="save-button">Save</button>
         <div id="status-message" role="status" aria-live="polite"></div>
     </div>
 

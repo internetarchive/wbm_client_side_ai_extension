@@ -480,7 +480,87 @@ const hostStyle = `
         padding: 16px 18px;
     }
 
-    /* === NEW: MINIMIZED BALL & VAPOR STYLES === */
+    /* === PROCESS TAB === */
+    .wbm-process-log {
+        padding: 12px 16px;
+        font-family: Menlo, Monaco, "SF Mono", "Cascadia Code", monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        background: #1C1C1E;
+        color: #E5E5EA;
+        min-height: 60px;
+        max-height: 360px;
+        overflow-y: auto;
+    }
+
+    .wbm-process-log::-webkit-scrollbar {
+        width: 4px;
+    }
+    .wbm-process-log::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .wbm-process-log::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 2px;
+    }
+
+    .wbm-process-steps {
+        margin-bottom: 8px;
+    }
+
+    .wbm-step {
+        padding: 3px 0;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .wbm-step-indicator {
+        flex-shrink: 0;
+        width: 14px;
+        text-align: center;
+        font-size: 11px;
+    }
+
+    .wbm-step-text {
+        font-size: 11.5px;
+    }
+
+    .wbm-step-active .wbm-step-indicator,
+    .wbm-step-active .wbm-step-text {
+        color: #64D2FF;
+    }
+
+    .wbm-step-done .wbm-step-indicator,
+    .wbm-step-done .wbm-step-text {
+        color: #30D158;
+    }
+
+    .wbm-step-error .wbm-step-indicator,
+    .wbm-step-error .wbm-step-text {
+        color: #FF453A;
+    }
+
+    .wbm-process-output-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.3);
+        margin-bottom: 6px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .wbm-stream-text {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        color: #E5E5EA;
+        font-size: 11.5px;
+        line-height: 1.6;
+    }
+
+    /* === MINIMIZED BALL & VAPOR STYLES === */
     #wbm-ai-ball {
         position: fixed;
         top: 20px;

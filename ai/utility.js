@@ -131,7 +131,7 @@ ${pageContent}`;
             if (action === "quality" && screenshotBlob) {
                 const textPrompt = `Analyze this archived web page using the load timing stats and the attached screenshot. Answer each question in 1-2 concise sentences.
 
-1) Is this a real page or a soft-404 error page? Look for signs like very short/generic content, "not found" style messaging, or an empty body.
+1) Is this page showing an error? (real error page, soft-404, or normal). Look for signs like very short/generic content, "not found" style messaging, or an empty body.
 2) Does the content look complete, or truncated/broken?
 3) Does the screenshot show a properly rendered page, or something broken/blank?
 
@@ -145,7 +145,7 @@ ${timingSummary}`;
             } else if (action === "quality") {
                 promptInput = `Analyze this archived web page using the load timing stats. Answer each question in 1-2 concise sentences.
 
-1) Is this a real page or a soft-404 error page? Look for signs like very short/generic content, "not found" style messaging, or an empty body.
+1) Is this page showing an error? (real error page, soft-404, or normal). Look for signs like very short/generic content, "not found" style messaging, or an empty body.
 2) Does the content look complete, or truncated/broken?
 
 Load Stats:
@@ -172,7 +172,14 @@ ${timingSummary}`;
                 try {
                     const parsed = JSON.parse(fullText);
                     if (parsed.analysis && Array.isArray(parsed.analysis)) {
-                        fullText = parsed.analysis.map(item => `**${item.question}**\n\n${item.answer}`).join('\n\n');
+                        fullText = parsed.analysis.map(item => {
+                            const q = item.question.toLowerCase();
+                            let icon = '📋';
+                            if (q.includes('error') || q.includes('real page')) icon = '🛑';
+                            else if (q.includes('content') || q.includes('complete') || q.includes('truncated')) icon = '📄';
+                            else if (q.includes('screenshot') || q.includes('render')) icon = '🖼️';
+                            return `**${icon} ${item.question}**\n\n${item.answer}`;
+                        }).join('\n\n');
                     }
                 } catch (e) {
                     console.error("Failed to parse quality JSON:", e);
@@ -181,7 +188,7 @@ ${timingSummary}`;
 
             console.timeEnd(action);
 
-            if (targetLanguage && targetLanguage !== 'en') {
+            if (action !== "quality" && targetLanguage && targetLanguage !== 'en') {
                 const translated = await this.translateResult(fullText, targetLanguage);
                 return {
                     success: true,
@@ -195,7 +202,7 @@ ${timingSummary}`;
                 originalSummary: fullText
             };
         } catch (error) {
-            if(targetLanguage && targetLanguage !== 'en') {
+            if (action !== "quality" && targetLanguage && targetLanguage !== 'en') {
                 const translatedError = await this.translateResult(error.message, targetLanguage);
                 chrome.tabs.sendMessage(tabId,{
                     type:"STREAM_ERROR",
