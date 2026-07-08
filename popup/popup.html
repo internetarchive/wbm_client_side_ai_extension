@@ -65,6 +65,20 @@
 
         <div class="divider"></div>
 
+        <div id="health-card" class="health-card">
+            <div class="health-card-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>Snapshot History</span>
+                <span id="health-spinner" class="health-spinner"></span>
+            </div>
+            <div id="health-body" class="health-body">
+                <div class="health-loading">Loading...</div>
+            </div>
+        </div>
+
         <div class="setting">
             <label for="language-select">Target Language</label>
             <select id="language-select">
@@ -85,7 +99,7 @@
         <div id="status-message" role="status" aria-live="polite"></div>
     </div>
 
-    <script src="./popup.js"></script>
+    <script type="module" src="./popup.js"></script>
 </body>
 
 </html>
