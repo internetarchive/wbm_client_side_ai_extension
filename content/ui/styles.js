@@ -611,6 +611,21 @@ const hostStyle = `
 `;
 
 const qualityStyle = `
+      .wbm-status-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 18px;
+        background: #FAFAFA;
+        border-bottom: 1px solid #F0F0F0;
+      }
+      .wbm-status-badge {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 12px;
+        letter-spacing: 0.02em;
+      }
       .wbm-section {
         padding: 16px 18px;
       }

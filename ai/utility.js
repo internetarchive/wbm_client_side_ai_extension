@@ -95,7 +95,7 @@ ${pageContent}`;
         }
     }
 
-    async analyzePage(pageContent, timingSummary, action, targetLanguage, tabId, screenshotBlob) {
+    async analyzePage(pageContent, timingSummary, action, targetLanguage, tabId, screenshotBlob, httpStatus = null) {
         try {
             if (!this.session) {
                 await this.init();
@@ -104,37 +104,31 @@ ${pageContent}`;
             const worker = await this.session.clone();
 
             let promptInput;
-            const streamOptions = action === "quality" ? {
-                responseConstraint: {
-                    type: "object",
-                    properties: {
-                        analysis: {
-                            type: "array",
-                            items: {
-                                type: "object",
-                                properties: {
-                                    question: { type: "string" },
-                                    answer: { type: "string" }
-                                },
-                                required: ["question", "answer"],
-                                additionalProperties: false
-                            },
-                            minItems: 1,
-                            maxItems: 3
-                        }
-                    },
-                    required: ["analysis"],
-                    additionalProperties: false
-                }
-            } : {};
+            const qualitySchema = {
+                type: "object",
+                properties: {
+                    errorStatus: { type: "string" },
+                    contentCompleteness: { type: "string" }
+                },
+                required: ["errorStatus", "contentCompleteness"],
+                additionalProperties: false
+            };
+            if (screenshotBlob) {
+                qualitySchema.properties.screenshotQuality = { type: "string" };
+                qualitySchema.required.push("screenshotQuality");
+            }
+            const streamOptions = action === "quality" ? { responseConstraint: qualitySchema } : {};
 
             if (action === "quality" && screenshotBlob) {
+                const statusLine = httpStatus?.status === "confirmed" ? `HTTP Status: ${httpStatus.codes[0]}` :
+                    httpStatus?.status === "chain" ? `HTTP Status chain: ${httpStatus.codes.join(' → ')}` : '';
                 const textPrompt = `Analyze this archived web page using the load timing stats and the attached screenshot. Answer each question in 1-2 concise sentences.
 
-1) Is this page showing an error? (real error page, soft-404, or normal). Look for signs like very short/generic content, "not found" style messaging, or an empty body.
+1) Is this page showing an error? (real error page, soft-404, or normal). Even if the HTTP status is 200, the page can still be a soft-404 — examine the body content and screenshot carefully for signs like very short/generic text, "not found" messaging, an empty body, or placeholder/search results suggesting the page doesn't exist.
 2) Does the content look complete, or truncated/broken?
 3) Does the screenshot show a properly rendered page, or something broken/blank?
 
+${statusLine}
 Load Stats:
 ${timingSummary}`;
 
@@ -143,11 +137,14 @@ ${timingSummary}`;
                     { type: "text", value: textPrompt }
                 ]}];
             } else if (action === "quality") {
+                const statusLine = httpStatus?.status === "confirmed" ? `HTTP Status: ${httpStatus.codes[0]}` :
+                    httpStatus?.status === "chain" ? `HTTP Status chain: ${httpStatus.codes.join(' → ')}` : '';
                 promptInput = `Analyze this archived web page using the load timing stats. Answer each question in 1-2 concise sentences.
 
-1) Is this page showing an error? (real error page, soft-404, or normal). Look for signs like very short/generic content, "not found" style messaging, or an empty body.
+1) Is this page showing an error? (real error page, soft-404, or normal). Even if the HTTP status is 200, the page can still be a soft-404 — look for signs like very short/generic text, "not found" messaging, or an empty body.
 2) Does the content look complete, or truncated/broken?
 
+${statusLine}
 Load Stats:
 ${timingSummary}`;
             } else {
@@ -171,16 +168,28 @@ ${timingSummary}`;
             if (action === "quality") {
                 try {
                     const parsed = JSON.parse(fullText);
-                    if (parsed.analysis && Array.isArray(parsed.analysis)) {
-                        fullText = parsed.analysis.map(item => {
-                            const q = item.question.toLowerCase();
-                            let icon = '📋';
-                            if (q.includes('error') || q.includes('real page')) icon = '🛑';
-                            else if (q.includes('content') || q.includes('complete') || q.includes('truncated')) icon = '📄';
-                            else if (q.includes('screenshot') || q.includes('render')) icon = '🖼️';
-                            return `**${icon} ${item.question}**\n\n${item.answer}`;
-                        }).join('\n\n');
+                    const imageBase = chrome.runtime.getURL('Public');
+                    const qa = [
+                        { q: "Is this page showing an error? (real error page, soft-404, or normal)", key: "errorStatus", icon: "🛑" },
+                        { q: "Does the content look complete, or truncated/broken?", key: "contentCompleteness", icon: "📄" },
+                    ];
+                    if (parsed.screenshotQuality) {
+                        qa.push({ q: "Does the screenshot show a properly rendered page, or something broken/blank?", key: "screenshotQuality", icon: "🖼️" });
                     }
+                    fullText = qa.map(({ q, key, icon }) => {
+                        const answer = parsed[key];
+                        if (!answer) return '';
+                        let img = '';
+                        if (key === 'errorStatus') {
+                            const lower = answer.toLowerCase();
+                            if (lower.includes('normal')) {
+                                img = `<p><img src="${imageBase}/200.jpeg" style="max-width:160px; border-radius:8px; margin-top:8px;"></p>`;
+                            } else if (lower.includes('error') || lower.includes('404') || lower.includes('soft-404') || lower.includes('broken') || lower.includes('not found') || lower.includes('blank') || lower.includes('empty')) {
+                                img = `<p><img src="${imageBase}/404.jpeg" style="max-width:160px; border-radius:8px; margin-top:8px;"></p>`;
+                            }
+                        }
+                        return `<p><strong>${icon} ${q}</strong></p><p>${answer}</p>${img}`;
+                    }).filter(Boolean).join('');
                 } catch (e) {
                     console.error("Failed to parse quality JSON:", e);
                 }

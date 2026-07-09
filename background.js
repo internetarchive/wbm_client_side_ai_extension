@@ -1,5 +1,6 @@
 import { AISession } from "./ai/utility.js";
 import { StorageCleaner } from "./ai/storageCleaner.js";
+import { getSnapshotStatus } from "./api/cdx.js";
 
 const aiSession = new AISession();
 const storageCleaner = new StorageCleaner();
@@ -162,8 +163,14 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
         }
         console.log(`Analyzing for action: ${action}`);
 
+        let httpStatus = null;
+        if (action === "quality") {
+          httpStatus = await getSnapshotStatus(tab.url);
+          if (timings) timings.httpStatus = httpStatus;
+        }
+
         const [analysisResult, insights] = await Promise.all([
-          aiSession.analyzePage(response.content, timingSummary, action, targetLanguage, tab.id, screenshotBlob),
+          aiSession.analyzePage(response.content, timingSummary, action, targetLanguage, tab.id, screenshotBlob, httpStatus),
           action === "summarize"
             ? aiSession.getStructuredInsights(response.content)
             : Promise.resolve({ faqs: [], famousPeople: [] })
@@ -233,6 +240,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.tabs.get(request.tabId, (tab) => {
       if (tab) handleAction(request.action, tab);
     });
+    sendResponse({});
     return;
   }
 

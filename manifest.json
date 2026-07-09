@@ -35,6 +35,12 @@
       ]
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["Public/*"],
+      "matches": ["*://web.archive.org/*"]
+    }
+  ],
   "action": {
     "default_popup": "./popup/popup.html",
     "default_title": "Wayback AI"
