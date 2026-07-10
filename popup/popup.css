@@ -5,7 +5,7 @@
 }
 
 body {
-    width: 480px;
+    width: 340px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
     background: #FFFFFF;
     color: #333333;
@@ -22,7 +22,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 14px 18px;
+    padding: 10px 14px;
     background: #AB2D33;
     border-bottom: 1px solid #8C242A;
     font-weight: 600;
@@ -47,9 +47,9 @@ body {
 /* Action Grid */
 .action-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    padding: 16px 18px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    padding: 10px 14px;
 }
 
 .action-card {
@@ -57,14 +57,14 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 16px 8px;
+    gap: 4px;
+    padding: 10px 6px;
     background: #FAFAFA;
     border: 1px solid #EAEAEA;
     border-radius: 8px;
     cursor: pointer;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
     color: #333333;
     transition: all 0.2s ease;
@@ -90,9 +90,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
     background: #FFF0F0;
     color: #AB2D33;
 }
@@ -107,7 +107,7 @@ body {
 }
 
 .action-label {
-    font-size: 11.5px;
+    font-size: 10px;
     letter-spacing: 0.02em;
 }
 
@@ -214,21 +214,24 @@ body {
     color: #AB2D33;
     text-decoration: none;
     margin-top: 4px;
+    cursor: pointer;
 }
 
 .health-link:hover {
     text-decoration: underline;
 }
 
+.health-cache-note {
+    font-size: 11px;
+    color: #999;
+    margin-top: 8px;
+    text-align: center;
+}
 .health-refresh {
     color: #888888;
     text-decoration: underline;
     cursor: pointer;
-    font-size: 11px;
-    margin-top: 8px;
-    text-align: center;
 }
-
 .health-refresh:hover {
     color: #666666;
 }
@@ -293,25 +296,25 @@ body {
 
 /* Settings */
 .setting {
-    padding: 14px 18px;
+    padding: 10px 14px;
 }
 
 label {
     display: block;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #666666;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 select {
     width: 100%;
-    padding: 8px 12px;
-    border-radius: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
     border: 1px solid #EAEAEA;
-    font-size: 13px;
+    font-size: 12px;
     font-family: inherit;
     background: #FAFAFA;
     color: #333333;
@@ -329,10 +332,10 @@ select:focus {
 /* Button — matches Wayback red */
 #save-button {
     display: block;
-    width: calc(100% - 36px);
-    margin: 0 18px 14px;
-    padding: 9px;
-    font-size: 13px;
+    width: calc(100% - 28px);
+    margin: 0 14px 10px;
+    padding: 7px;
+    font-size: 11px;
     font-weight: 600;
     font-family: inherit;
     text-transform: uppercase;
@@ -359,5 +362,73 @@ select:focus {
     color: #247500;
     height: 16px;
     margin-bottom: 10px;
+}
+
+/* Timeline */
+.timeline-container {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #F0F0F0;
+}
+.timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.timeline-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.timeline-year {
+    font-size: 10px;
+    font-weight: 600;
+    color: #888;
+    width: 30px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.timeline-cells {
+    display: flex;
+    gap: 2px;
+    flex: 1;
+}
+.timeline-cell {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 2px;
+    min-width: 6px;
+    text-decoration: none;
+}
+
+.tl-clickable {
+    cursor: pointer;
+}
+.timeline-count {
+    font-size: 9px;
+    color: #aaa;
+    width: 24px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.timeline-legend {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 10px;
+    color: #888;
+}
+.tl-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 3px;
+}
+.health-timeline {
+    font-size: 11px;
+    margin-top: 6px;
 }
 
