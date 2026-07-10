@@ -1,5 +1,6 @@
+import { sleep, formatDate } from "../utils/helpers.js";
+
 const CDX_BASE = "https://web.archive.org/cdx/search/cdx";
-const AVAILABILITY_API = "https://archive.org/wayback/available";
 
 async function cdxFetch(url, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -43,14 +44,17 @@ export async function getLastCapture(url) {
 }
 
 export async function getAvailability(url) {
-  try {
-    const res = await fetch(`${AVAILABILITY_API}?url=${encodeURIComponent(url)}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.archived_snapshots?.closest ?? null;
-  } catch {
-    return null;
-  }
+  const ts = await getFirstCapture(url);
+  if (!ts) return null;
+  const apiUrl = buildCDXUrl(url, { fl: "statuscode", from: ts, to: ts });
+  const data = await cdxFetch(apiUrl);
+  const status = data?.[1]?.[0] || "200";
+  return {
+    status,
+    available: true,
+    url: `https://web.archive.org/web/${ts}/${url}`,
+    timestamp: ts,
+  };
 }
 
 export async function getTimelineData(url) {
@@ -128,8 +132,8 @@ export async function getPageHealth(url) {
   return {
     total: total || 0,
     totalLabel: formatCount(total),
-    firstArchived: formatTimestamp(firstTs),
-    lastArchived: formatTimestamp(lastTs),
+    firstArchived: formatDate(firstTs),
+    lastArchived: formatDate(lastTs),
     isTruncated,
     statusDistribution: sortedStatuses.map(([code, count]) => ({
       code,
@@ -164,21 +168,4 @@ function formatCount(n) {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
   if (n >= 10000) return `${(n / 1000).toFixed(0)}k`;
   return n.toLocaleString();
-}
-
-function formatTimestamp(ts) {
-  if (!ts || ts.length < 8) return "Unknown";
-  const year = ts.substring(0, 4);
-  const month = ts.substring(4, 6);
-  const day = ts.substring(6, 8);
-  const date = new Date(+year, +month - 1, +day);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
 }

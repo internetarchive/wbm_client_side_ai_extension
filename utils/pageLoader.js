@@ -1,6 +1,9 @@
-// TODO: Replace with MutationObserver for JS-heavy archived pages
-// Current approach misses dynamically rendered content
-
-function waitForPageLoad() {
-  
+export function waitForPageLoad() {
+  return new Promise(resolve => {
+    if (document.readyState === "complete") {
+      resolve();
+    } else {
+      window.addEventListener("load", resolve, { once: true });
+    }
+  });
 }

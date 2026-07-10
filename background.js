@@ -1,6 +1,7 @@
 import { AISession } from "./ai/utility.js";
 import { StorageCleaner } from "./ai/storageCleaner.js";
 import { getSnapshotStatus } from "./api/cdx.js";
+import { isPlaybackPage } from "./utils/helpers.js";
 
 const aiSession = new AISession();
 const storageCleaner = new StorageCleaner();
@@ -31,9 +32,6 @@ chrome.runtime.onInstalled.addListener(async () => {
   await aiSession.init();
 });
 
-function isPlaybackPage(url) {
-  return /web\.archive\.org\/web\/\d{14}/.test(url);
-}
 function isBrowserSupported() {
   return typeof LanguageModel !== "undefined";
 }

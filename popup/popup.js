@@ -1,4 +1,5 @@
 import { getPageHealth, getAvailability, getTimelineData } from "../api/cdx.js";
+import { isPlaybackPage, formatDate } from "../utils/helpers.js";
 
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 const CACHE_PREFIX_HEALTH = "wbm_health_";
@@ -163,10 +164,6 @@ function renderHealthError(container, msg) {
   container.innerHTML = `<div class="health-empty">${msg}</div>`;
 }
 
-function isPlaybackPage(url) {
-  return url && url.startsWith("https://web.archive.org/web/");
-}
-
 function extractOriginalUrl(playbackUrl) {
   const match = playbackUrl.match(/^https:\/\/web\.archive\.org\/web\/\d+(?:id_|if_)?\/(.+)$/);
   return match ? decodeURIComponent(match[1]) : playbackUrl;
@@ -309,17 +306,4 @@ function showHistory() {
   stats.style.display = "block";
   title.textContent = "Snapshot History";
   container.style.display = "none";
-}
-
-function formatDate(ts) {
-  if (!ts || ts.length < 8) return ts;
-  const year = ts.substring(0, 4);
-  const month = ts.substring(4, 6);
-  const day = ts.substring(6, 8);
-  const date = new Date(+year, +month - 1, +day);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
