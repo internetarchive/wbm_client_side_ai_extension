@@ -7,17 +7,17 @@ export class WordDiffEngine {
     return text.match(/\S+\s*/g) || [];
   }
 
-  #computeLCS(i, j) {
-    if(i === 0 || j === 0) return 0;
-    if(this.#dp[i][j] !== -1) return this.#dp[i][j];
-
-    if(this.#tokenA[i-1] === this.#tokenB[j-1]) {
-      return this.#dp[i][j] = 1 + this.#computeLCS(i - 1, j - 1);
+  #computeLCS(n, m) {
+    this.#dp = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+    for (let i = 1; i <=n; i++) {
+      for (let j = 1; j <= m; j++) {
+        if (this.#tokenA[i - 1] === this.#tokenB[j - 1]) {
+          this.#dp[i][j] = 1 + this.#dp[i - 1][j - 1];
+        } else {
+          this.#dp[i][j] = Math.max(this.#dp[i - 1][j], this.#dp[i][j - 1]);
+        }
+      }
     }
-    return this.#dp[i][j] = Math.max(
-      this.#computeLCS(i - 1, j),
-      this.#computeLCS(i, j - 1)
-    )
   }
 
   #backtrack(n, m) {
