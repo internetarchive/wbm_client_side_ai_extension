@@ -165,6 +165,8 @@ ${timingSummary}`;
                 });
             }
 
+            worker.destroy();
+
             if (action === "quality") {
                 try {
                     const parsed = JSON.parse(fullText);
@@ -324,6 +326,35 @@ ${timingSummary}`;
         } catch (error) {
             console.error("Failed to translate insights:", error);
             return insights;
+        }
+    }
+
+    async summarizeChanges(titleChanges, diffText) {
+        try {
+            if (!this.session) await this.init();
+            if (!this.session) return "";
+
+            const worker = await this.session.clone();
+            const MAX_CHARS = 6000;
+            let trimmed = false;
+            if (diffText.length > MAX_CHARS) {
+                diffText = diffText.slice(0, MAX_CHARS) + "\n... (truncated)";
+                trimmed = true;
+            }
+
+            const prompt = `Compare these two versions of a web page and summarize what changed in 2-3 sentences. Focus on meaningful content changes, not formatting.
+
+${titleChanges ? `Title changed from "${titleChanges.before}" to "${titleChanges.after}"` : ""}
+
+Changes:
+${diffText}${trimmed ? "\n\nNote: The changes list was truncated. Focus on the most significant changes visible." : ""}`;
+
+            const result = await worker.prompt(prompt);
+            worker.destroy();
+            return result;
+        } catch (error) {
+            console.error("Failed to summarize changes:", error);
+            return "";
         }
     }
 }

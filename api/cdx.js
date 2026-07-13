@@ -1,171 +1,179 @@
-import { sleep, formatDate } from "../utils/helpers.js";
+import { sleep, formatDate, getStatusColor, formatCount, parsePlaybackUrl } from "../utils/helpers.js";
 
-const CDX_BASE = "https://web.archive.org/cdx/search/cdx";
+export class cdxBase {
+  #CDX_BASE = "https://web.archive.org/cdx/search/cdx";
 
-async function cdxFetch(url, retries = 3) {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      const res = await fetch(url);
-      if (res.status === 429 || res.status === 503) {
-        if (attempt < retries - 1) {
-          await sleep((attempt + 1) * 2000);
-          continue;
+  constructor(){}
+
+  async #cdxFetch(url, retries = 3) {
+    for(let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = await fetch(url);
+        if (res.status === 429 || res.status === 503) {
+          if(attempt < retries - 1) {
+            await sleep((attempt + 1) * 2000);
+            continue;
+          }
+          return null;
         }
-        return null;
+        if(!res.ok) return null;
+        return await res.json();
+      } catch (error) {
+        if(attempt === retries - 1) {
+          return null;
+        }
+        await sleep((attempt + 1) * 2000);
       }
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
-      if (attempt === retries - 1) return null;
-      await sleep((attempt + 1) * 2000);
     }
+    return null;
+  } 
+
+  #buildCDXUrl(url, params = {}) {
+    const base = `${this.#CDX_BASE}?url=${encodeURIComponent(url)}&matchType=exact&output=json`;
+    const parameterArray = Object.entries(params);
+    const query = parameterArray.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    return query ? `${base}&${query}` : base;
   }
-  return null;
-}
 
-export function buildCDXUrl(url, params = {}) {
-  const base = `${CDX_BASE}?url=${encodeURIComponent(url)}&matchType=exact&output=json`;
-  const query = Object.entries(params)
-    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-    .join("&");
-  return query ? `${base}&${query}` : base;
-}
+  async #getCollapsedSample(url) {
+    const apiUrl = this.#buildCDXUrl(url, {
+      fl: "timestamp,statuscode",
+      collapse: "timestamp:8",
+      limit: 10000,
+    });
+    return await this.#cdxFetch(apiUrl);
+  }
 
-export async function getFirstCapture(url) {
-  const apiUrl = buildCDXUrl(url, { fl: "timestamp", limit: 1 });
-  const data = await cdxFetch(apiUrl);
-  return data?.[1]?.[0] ?? null;
-}
+  async getFirstCapture(url) {
+    const apiUrl = this.#buildCDXUrl(url, { fl: "timestamp", limit: 1 });
+    const data = await this.#cdxFetch(apiUrl);
+    return data?.[1]?.[0] ?? null;
+  }
 
-export async function getLastCapture(url) {
-  const apiUrl = buildCDXUrl(url, { fl: "timestamp", limit: -1, fastLatest: "true" });
-  const data = await cdxFetch(apiUrl, 3);
-  return data?.[1]?.[0] ?? null;
-}
+  async getLastCapture(url) {
+    const apiUrl = this.#buildCDXUrl(url, { fl: "timestamp", limit: -1, fastLatest: "true" });
+    const data = await this.#cdxFetch(apiUrl, 3);
+    return data?.[1]?.[0] ?? null;
+  } 
 
-export async function getAvailability(url) {
-  const ts = await getFirstCapture(url);
-  if (!ts) return null;
-  const apiUrl = buildCDXUrl(url, { fl: "statuscode", from: ts, to: ts });
-  const data = await cdxFetch(apiUrl);
-  const status = data?.[1]?.[0] || "200";
-  return {
+  async getAvailability_CDX(url) {
+    const ts = await this.getFirstCapture(url);
+    if(!ts) return null;
+    const apiUrl = this.#buildCDXUrl(url, { fl: "statuscode", from: ts, to: ts });
+    const data = await this.#cdxFetch(apiUrl);
+    const status = data?.[1]?.[0] || "200";
+    return {
     status,
-    available: true,
-    url: `https://web.archive.org/web/${ts}/${url}`,
-    timestamp: ts,
-  };
-}
+      available: true,
+      url: `https://web.archive.org/web/${ts}/${url}`,
+      timestamp: ts,
+    };
+  }
 
-export async function getTimelineData(url) {
-  const apiUrl = buildCDXUrl(url, {
-    fl: "timestamp,statuscode",
-    collapse: "timestamp:6",
-    limit: 500,
-  });
-  const data = await cdxFetch(apiUrl);
-  if (!data || data.length < 2) return [];
-  const rows = data.slice(1);
-  const years = {};
-  for (const [ts, status] of rows) {
-    const year = ts.substring(0, 4);
-    const month = parseInt(ts.substring(4, 6), 10);
-    if (!years[year]) years[year] = Array(12).fill(null);
-    if (years[year][month - 1] === null) {
-      years[year][month - 1] = { status: status || "-", ts };
+  async getTimelineData(playbackUrl = "", url = "") {
+    let originalUrl = url;
+
+    if (playbackUrl !== "") {
+      const urlData = parsePlaybackUrl(playbackUrl);
+      if(!urlData) return [];
+      originalUrl = urlData.url;
     }
-  }
-  return Object.entries(years).map(([year, months]) => ({ year: parseInt(year), months }));
-}
 
-export async function getSnapshotStatus(playbackUrl) {
-  const match = playbackUrl.match(/web\.archive\.org\/web\/(\d{14})(?:id_|if_|js_|cs_|im_|fl_)?\/(.+)/);
-  if (!match) return { status: "unavailable", codes: [] };
-  const timestamp = match[1];
-  const originalUrl = decodeURIComponent(match[2]);
+    if (!originalUrl) return [];
 
-  const apiUrl = buildCDXUrl(originalUrl, {
-    fl: "statuscode,mimetype",
-    from: timestamp,
-    to: timestamp,
-  });
-
-  const data = await cdxFetch(apiUrl);
-  if (!data || data.length < 2) return { status: "unavailable", codes: [] };
-
-  const rawRows = data.slice(1);
-  const rawCodes = rawRows.map(row => row[0]);
-  const codes = [...new Set(rawCodes)].filter(c => c && c !== "-");
-
-  if (codes.length === 0) {
-    const isRevisit = rawRows.some(row => (row[1] || "").includes("revisit"));
-    return { status: "unrecorded", codes: [], isRevisit };
-  }
-  if (codes.length === 1) {
-    return { status: "confirmed", codes };
-  }
-  return { status: "chain", codes };
-}
-
-export async function getPageHealth(url) {
-  const [firstTs, lastTs, sample] = await Promise.all([
-    getFirstCapture(url),
-    getLastCapture(url),
-    getCollapsedSample(url),
-  ]);
-
-  if (!firstTs && !lastTs && (!sample || sample.length < 2)) return null;
-
-  const entries = sample?.slice(1) ?? [];
-  const total = entries.length;
-  const isTruncated = total >= 10000;
-
-  const statusCounts = {};
-  for (const [, status] of entries) {
-    const s = status || "-";
-    statusCounts[s] = (statusCounts[s] || 0) + 1;
+    const apiUrl = this.#buildCDXUrl(originalUrl, {
+      fl: "timestamp,statuscode",
+      collapse: "timestamp:6",
+      limit: 500
+    });
+    const data = await this.#cdxFetch(apiUrl);
+    if(!data || data.length < 2) return [];
+    const rows = data.slice(1);
+    const years = {};
+    for (const [ts, status] of rows) {
+      const year = ts.substring(0, 4);
+      const month = parseInt(ts.substring(4, 6), 10);
+      if (!years[year]) years[year] = Array(12).fill(null);
+      if (years[year][month - 1] === null) {
+        years[year][month - 1] = { status: status || "-", ts };
+      }
+    }
+    return Object.entries(years).map(([year, months]) => ({ year: parseInt(year), months }));
   }
 
-  const sortedStatuses = Object.entries(statusCounts)
-    .sort(([, a], [, b]) => b - a);
+  async getSnapshotStatus_quality(playbackUrl) {
+    const urlData = parsePlaybackUrl(playbackUrl);
+    if(!urlData) return { status: "unavailable", codes: [] };
+    const timestamp = urlData.ts;
+    const originalUrl = urlData.url;
 
-  return {
-    total: total || 0,
-    totalLabel: formatCount(total),
-    firstArchived: formatDate(firstTs),
-    lastArchived: formatDate(lastTs),
-    isTruncated,
-    statusDistribution: sortedStatuses.map(([code, count]) => ({
-      code,
-      count,
-      pct: total > 0 ? Math.round((count / total) * 100) : 0,
-      colors: getStatusColor(code),
-    })),
-  };
-}
+    const apiUrl = this.#buildCDXUrl(originalUrl, {
+      fl: "statuscode,mimetype",
+      from: timestamp,
+      to: timestamp,
+    });
 
-async function getCollapsedSample(url) {
-  const apiUrl = buildCDXUrl(url, {
-    fl: "timestamp,statuscode",
-    collapse: "timestamp:8",
-    limit: 10000,
-  });
-  return cdxFetch(apiUrl);
-}
+    const data = await this.#cdxFetch(apiUrl);
+    if (!data || data.length < 2) return { status: "unavailable", codes: [] };
 
-function getStatusColor(code) {
-  if (!code || code === "-") return { color: "#999999", bg: "#F5F5F5" };
-  const c = String(code);
-  if (c.startsWith("2")) return { color: "#247500", bg: "#F0FAE6" };
-  if (c.startsWith("3")) return { color: "#905B00", bg: "#FFF5E6" };
-  if (c.startsWith("4")) return { color: "#D0021B", bg: "#FFF0F0" };
-  if (c.startsWith("5")) return { color: "#D0021B", bg: "#FFF0F0" };
-  return { color: "#666666", bg: "#F5F5F5" };
-}
+    const rawRows = data.slice(1);
+    const rawCodes = rawRows.map(row => row[0]);
+    const codes = [...new Set(rawCodes)].filter(c => c && c !== "-");
 
-function formatCount(n) {
-  if (!n || isNaN(n)) return "0";
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 10000) return `${(n / 1000).toFixed(0)}k`;
-  return n.toLocaleString();
+    if (codes.length === 0) {
+      const isRevisit = rawRows.some(row => (row[1] || "").includes("revisit"));
+      return { status: "unrecorded", codes: [], isRevisit };
+    }
+    if (codes.length === 1) {
+      return { status: "confirmed", codes };
+    }
+    return { status: "chain", codes };
+  }
+
+  async getPageHealth(playbackUrl = "", url = "") {
+    let originalUrl = url;
+
+    if(playbackUrl !== "") {
+      const urlData = parsePlaybackUrl(playbackUrl);
+      if(!urlData) return null; 
+      originalUrl = urlData.url;
+    }
+    
+    if(!originalUrl) return null;
+
+    const [firstTs, lastTs, sample] = await Promise.all([
+      this.getFirstCapture(originalUrl),
+      this.getLastCapture(originalUrl),
+      this.#getCollapsedSample(originalUrl),
+    ]);
+
+    if (!firstTs && !lastTs && (!sample || sample.length < 2)) return null;
+
+    const entries = sample?.slice(1) ?? [];
+    const total = entries.length;
+    const isTruncated = total >= 10000;
+
+    const statusCounts = {};
+    for (const [, status] of entries) {
+      const s = status || "-";
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    }
+
+    const sortedStatuses = Object.entries(statusCounts)
+      .sort(([, a], [, b]) => b - a);
+
+    return {
+      total: total || 0,
+      totalLabel: formatCount(total),
+      firstArchived: formatDate(firstTs),
+      lastArchived: formatDate(lastTs),
+      isTruncated,
+      statusDistribution: sortedStatuses.map(([code, count]) => ({
+        code,
+        count,
+        pct: total > 0 ? Math.round((count / total) * 100) : 0,
+        colors: getStatusColor(code),
+      })),
+    };
+  }
 }

@@ -1,9 +1,10 @@
-import { getPageHealth, getAvailability, getTimelineData } from "../api/cdx.js";
-import { isPlaybackPage, formatDate } from "../utils/helpers.js";
+import { cdxBase } from "../api/cdx.js";
+import { isPlaybackPage, formatDate, parsePlaybackUrl } from "../utils/helpers.js";
 
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 const CACHE_PREFIX_HEALTH = "wbm_health_";
 const CACHE_PREFIX_TIMELINE = "wbm_timeline_";
+const cdx = new cdxBase();
 
 document.addEventListener("DOMContentLoaded", () => {
   const languageSelect = document.getElementById("language-select");
@@ -46,7 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
 async function loadPageHealth(forceRefresh = false) {
   const healthBody = document.getElementById("health-body");
   const healthSpinner = document.getElementById("health-spinner");
-  if (!healthBody) return;
+  if (!healthBody) {
+    console.log('No health body present!')
+    return;
+  }
 
   chrome.tabs.query({ active: true, currentWindow: true }, async ([tab]) => {
     if (!tab) {
@@ -56,10 +60,10 @@ async function loadPageHealth(forceRefresh = false) {
 
     const url = tab.url;
     const isPlayback = isPlaybackPage(url);
-    const cdxUrl = isPlayback ? extractOriginalUrl(url) : url;
+    const cdxUrl = isPlayback ? parsePlaybackUrl(url).url : url;
 
     if (!isPlayback) {
-      const avail = await getAvailability(url);
+      const avail = await cdx.getAvailability_CDX(url);
       if (avail) {
         const linkUrl = avail.url || `https://web.archive.org/web/${avail.timestamp}/${url}`;
         healthBody.innerHTML = `
@@ -84,7 +88,7 @@ async function loadPageHealth(forceRefresh = false) {
     }
 
     healthSpinner.classList.add("health-spinner--active");
-    const health = await getPageHealth(cdxUrl);
+    const health = await cdx.getPageHealth("", cdxUrl);
     healthSpinner.classList.remove("health-spinner--active");
 
     if (health && health.total > 0) {
@@ -164,10 +168,6 @@ function renderHealthError(container, msg) {
   container.innerHTML = `<div class="health-empty">${msg}</div>`;
 }
 
-function extractOriginalUrl(playbackUrl) {
-  const match = playbackUrl.match(/^https:\/\/web\.archive\.org\/web\/\d+(?:id_|if_)?\/(.+)$/);
-  return match ? decodeURIComponent(match[1]) : playbackUrl;
-}
 
 async function showTimeline(cdxUrl) {
   const stats = document.querySelector(".health-stats");
@@ -183,7 +183,7 @@ async function showTimeline(cdxUrl) {
   if (!cdxUrl) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
-    cdxUrl = isPlaybackPage(tab.url) ? extractOriginalUrl(tab.url) : tab.url;
+    cdxUrl = isPlaybackPage(tab.url) ? parsePlaybackUrl(tab.url).url : tab.url;
   }
 
   stats.style.display = "none";
@@ -200,7 +200,7 @@ async function showTimeline(cdxUrl) {
     return;
   }
 
-  const data = await getTimelineData(cdxUrl);
+  const data = await cdx.getTimelineData("", cdxUrl);
   if (data && data.length > 0) {
     await chrome.storage.local.set({ [cacheKey]: { data, timestamp: Date.now() } });
   }
@@ -283,7 +283,7 @@ function renderTimeline(container, data, fromCache, cacheKey, cdxUrl) {
     refreshBtn.addEventListener("click", async () => {
       container.innerHTML = `<div class="health-loading">Loading timeline...</div>`;
       await chrome.storage.local.remove(cacheKey);
-      const fresh = await getTimelineData(cdxUrl);
+      const fresh = await cdx.getTimelineData("", cdxUrl);
       if (fresh && fresh.length > 0) {
         await chrome.storage.local.set({ [cacheKey]: { data: fresh, timestamp: Date.now() } });
       }

@@ -771,3 +771,182 @@ const qualityStyle = `
       .wbm-ai-result li { margin-bottom: 6px; }
       .wbm-ai-result strong { font-weight: 600; color: #111; }
 `;
+
+const compareStyle = `
+  .cmp-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid #F0F0F0;
+  }
+  .cmp-versions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .cmp-version {
+    text-align: center;
+  }
+  .cmp-date {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #222;
+  }
+  .cmp-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #999;
+  }
+  .cmp-current .cmp-date { color: #AB2D33; }
+  .cmp-vs {
+    font-size: 11px;
+    font-weight: 700;
+    color: #CCC;
+    text-transform: uppercase;
+  }
+  .cmp-stats {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  .cmp-stat {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .cmp-added { color: #247500; }
+  .cmp-removed { color: #D0021B; }
+  .cmp-section {
+    padding: 16px 18px;
+    border-bottom: 1px solid #F0F0F0;
+  }
+  .cmp-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  .cmp-ai-summary {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+  }
+  .cmp-ai-summary p { margin-bottom: 8px; }
+  .cmp-diff {
+    font-family: Menlo, Monaco, "SF Mono", monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #FAFAFA;
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+  .cmp-line {
+    display: flex;
+    gap: 6px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .cmp-sign {
+    flex-shrink: 0;
+    width: 12px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .cmp-added { background: #F0FAE6; }
+  .cmp-added .cmp-sign { color: #247500; }
+  .cmp-removed { background: #FFF0F0; }
+  .cmp-removed .cmp-sign { color: #D0021B; }
+  .cmp-unchanged { color: #999; }
+  .cmp-diff::-webkit-scrollbar { width: 4px; }
+  .cmp-diff::-webkit-scrollbar-track { background: transparent; }
+  .cmp-diff::-webkit-scrollbar-thumb { background: #DDD; border-radius: 2px; }
+  .cmp-frames {
+    display: flex;
+    gap: 8px;
+  }
+  .cmp-frame {
+    flex: 1;
+  }
+  .cmp-frame-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  .cmp-frame iframe {
+    width: 100%;
+    height: 200px;
+    border: 1px solid #EAEAEA;
+    border-radius: 6px;
+    background: #FFF;
+  }
+  .cmp-expand-btn {
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 6px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  .cmp-expand-btn:hover { opacity: 1; }
+  #cmp-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #cmp-modal iframe {
+    width: 90vw;
+    height: 85vh;
+    border: none;
+    border-radius: 8px;
+    background: #FFF;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .cmp-modal-header {
+    color: #FFF;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+    text-align: center;
+    background: rgba(0,0,0,0.55);
+    padding: 10px 20px;
+    border-radius: 8px 8px 0 0;
+  }
+  .cmp-modal-close {
+    position: fixed;
+    top: 16px;
+    right: 24px;
+    font-size: 32px;
+    color: #FFF;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    line-height: 1;
+  }
+  .cmp-modal-close:hover { opacity: 1; }
+  .cmp-modal-diff .cmp-diff-modal-body {
+    width: 90vw;
+    max-width: 1100px;
+    max-height: 78vh;
+    overflow-y: auto;
+    background: #FFF;
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-size: 13px;
+    line-height: 1.6;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    font-family: "SF Mono", "Monaco", "Menlo", "Consolas", monospace;
+  }
+`;
