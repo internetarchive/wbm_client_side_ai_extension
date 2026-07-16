@@ -131,6 +131,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   }
 
+  else if (request.type === "COMPARE_SHOW_INPUT") {
+    showCompareInput(request);
+  }
+
   else if (request.type === "COMPARE_LOADING") {
     showCompareLoading(request.error ?? "Starting comparison...");
   }
