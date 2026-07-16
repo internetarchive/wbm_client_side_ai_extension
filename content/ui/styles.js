@@ -872,6 +872,9 @@ const compareStyle = `
   }
   .cmp-frame {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
   .cmp-frame-label {
     font-size: 10px;
@@ -879,13 +882,26 @@ const compareStyle = `
     color: #888;
     margin-bottom: 4px;
     text-align: center;
+    flex-shrink: 0;
   }
-  .cmp-frame iframe {
-    width: 100%;
-    height: 200px;
+  .cmp-frame-thumb {
+    position: relative;
+    overflow: hidden;
     border: 1px solid #EAEAEA;
     border-radius: 6px;
     background: #FFF;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+  }
+  .cmp-frame-thumb iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 300%;
+    height: 300%;
+    border: none;
+    transform-origin: 0 0;
+    transform: scale(0.33333);
   }
   .cmp-expand-btn {
     cursor: pointer;

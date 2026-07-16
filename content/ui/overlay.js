@@ -492,11 +492,15 @@ function showCompareOverlay(data) {
     <div class="cmp-frames">
       <div class="cmp-frame" data-url="${data.tsB}">
         <div class="cmp-frame-label">${dateB} <span class="cmp-expand-btn" data-ts="${data.tsB}" data-url="${data.url}" data-label="${dateB}">⛶</span></div>
-        <iframe src="https://web.archive.org/web/${data.tsB}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>
+        <div class="cmp-frame-thumb">
+          <iframe src="https://web.archive.org/web/${data.tsB}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>
+        </div>
       </div>
       <div class="cmp-frame" data-url="${data.tsA}">
         <div class="cmp-frame-label">${dateA} <span class="cmp-expand-btn" data-ts="${data.tsA}" data-url="${data.url}" data-label="${dateA}">⛶</span></div>
-        <iframe src="https://web.archive.org/web/${data.tsA}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>
+        <div class="cmp-frame-thumb">
+          <iframe src="https://web.archive.org/web/${data.tsA}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>
+        </div>
       </div>
     </div>
   </div>`;
