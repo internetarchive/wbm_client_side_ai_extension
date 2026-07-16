@@ -359,24 +359,78 @@ function formatCompareDate(ts) {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
-function showCompareOverlay(data) {
-  const shadow = createShadowHost();
+let _compareLoadingRef = null;
 
+function showCompareLoading(msg) {
+  if (_compareLoadingRef) return;
+  const shadow = createShadowHost();
   const style = document.createElement('style');
   style.textContent = compareStyle;
   shadow.appendChild(style);
-
   const { popup, content } = createBasePopup("Snapshot Comparison");
   shadow.appendChild(popup);
+  setupMinimizeBehavior(shadow, popup);
+  content.innerHTML = `
+    <div class="wbm-process-log" style="border:none;min-height:80px;max-height:none;">
+      <div class="wbm-process-steps">
+        <div class="wbm-step wbm-step-active">
+          <span class="wbm-step-indicator">→</span>
+          <span class="wbm-step-text">${escapeHtml(msg)}</span>
+        </div>
+      </div>
+    </div>`;
+  _compareLoadingRef = { shadow, popup, content };
+}
 
+function appendCompareStep(step, status) {
+  if (!_compareLoadingRef) return;
+  const stepsContainer = _compareLoadingRef.content.querySelector('.wbm-process-steps');
+  if (!stepsContainer) return;
+
+  const prev = stepsContainer.querySelector('.wbm-step-active');
+  if (prev) {
+    prev.className = 'wbm-step wbm-step-done';
+    prev.querySelector('.wbm-step-indicator').textContent = '✓';
+  }
+
+  const stepClass = status === "done" ? "wbm-step-done" :
+                    status === "error" ? "wbm-step-error" :
+                    "wbm-step-active";
+  const indicator = status === "done" ? "✓" :
+                    status === "error" ? "✗" :
+                    "→";
+
+  stepsContainer.insertAdjacentHTML('beforeend',
+    `<div class="wbm-step ${stepClass}">
+      <span class="wbm-step-indicator">${indicator}</span>
+      <span class="wbm-step-text">${escapeHtml(step)}</span>
+    </div>`
+  );
+}
+
+function showCompareOverlay(data) {
   if (!data.success) {
-    const isLoading = data.error === "Comparing snapshots...";
-    content.innerHTML = isLoading
-      ? `<div class="cmp-section" style="text-align:center;padding:24px 18px;"><div class="wbm-spinner" style="margin:0 auto;"></div><p style="margin-top:12px;color:#666;font-size:13px;">${escapeHtml(data.error)}</p></div>`
-      : `<div class="cmp-section" style="padding:24px 18px;"><p style="color:#D0021B;font-size:14px;">${escapeHtml(data.error)}</p></div>`;
-    setupMinimizeBehavior(shadow, popup);
+    if (_compareLoadingRef) {
+      _compareLoadingRef.content.innerHTML =
+        `<div class="cmp-section" style="padding:24px 18px;"><p style="color:#D0021B;font-size:14px;">${escapeHtml(data.error)}</p></div>`;
+      _compareLoadingRef = null;
+    } else {
+      const shadow = createShadowHost();
+      const style = document.createElement('style');
+      style.textContent = compareStyle;
+      shadow.appendChild(style);
+      const { popup, content } = createBasePopup("Snapshot Comparison");
+      shadow.appendChild(popup);
+      content.innerHTML = `<div class="cmp-section" style="padding:24px 18px;"><p style="color:#D0021B;font-size:14px;">${escapeHtml(data.error)}</p></div>`;
+      setupMinimizeBehavior(shadow, popup);
+    }
     return;
   }
+
+  const shadow = _compareLoadingRef ? _compareLoadingRef.shadow : createShadowHost();
+  const popup = _compareLoadingRef ? _compareLoadingRef.popup : null;
+  const content = _compareLoadingRef ? _compareLoadingRef.content : null;
+  _compareLoadingRef = null;
 
   const dateA = formatCompareDate(data.tsA);
   const dateB = formatCompareDate(data.tsB);
@@ -447,19 +501,31 @@ function showCompareOverlay(data) {
     </div>
   </div>`;
 
-  content.innerHTML = html;
-
-  content.querySelectorAll(".cmp-expand-btn").forEach(btn => {
-    if (btn.classList.contains("cmp-diff-expand")) {
-      btn.addEventListener("click", () => showCompareDiffModal(shadow, fullDiffHtml, `Changes (${added} added, ${removed} removed)`));
-    } else {
-      btn.addEventListener("click", () => {
-        showCompareFrameModal(shadow, btn.dataset.ts, btn.dataset.url, btn.dataset.label);
-      });
-    }
-  });
-
-  setupMinimizeBehavior(shadow, popup);
+  if (!popup) {
+    const style = document.createElement('style');
+    style.textContent = compareStyle;
+    shadow.appendChild(style);
+    const popupData = createBasePopup("Snapshot Comparison");
+    shadow.appendChild(popupData.popup);
+    setupMinimizeBehavior(shadow, popupData.popup);
+    popupData.content.innerHTML = html;
+    popupData.content.querySelectorAll(".cmp-expand-btn").forEach(btn => {
+      if (btn.classList.contains("cmp-diff-expand")) {
+        btn.addEventListener("click", () => showCompareDiffModal(shadow, fullDiffHtml, `Changes (${added} added, ${removed} removed)`));
+      } else {
+        btn.addEventListener("click", () => showCompareFrameModal(shadow, btn.dataset.ts, btn.dataset.url, btn.dataset.label));
+      }
+    });
+  } else {
+    content.innerHTML = html;
+    content.querySelectorAll(".cmp-expand-btn").forEach(btn => {
+      if (btn.classList.contains("cmp-diff-expand")) {
+        btn.addEventListener("click", () => showCompareDiffModal(shadow, fullDiffHtml, `Changes (${added} added, ${removed} removed)`));
+      } else {
+        btn.addEventListener("click", () => showCompareFrameModal(shadow, btn.dataset.ts, btn.dataset.url, btn.dataset.label));
+      }
+    });
+  }
 }
 
 function showCompareFrameModal(shadow, ts, url, label) {

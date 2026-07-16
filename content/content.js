@@ -132,7 +132,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   else if (request.type === "COMPARE_LOADING") {
-    showCompareOverlay({ success: false, error: "Comparing snapshots..." });
+    showCompareLoading(request.error ?? "Starting comparison...");
+  }
+
+  else if (request.type === "COMPARE_PROGRESS") {
+    appendCompareStep(request.step, request.status || "done");
   }
 
 });

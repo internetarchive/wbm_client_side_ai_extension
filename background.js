@@ -106,8 +106,7 @@ async function extractTextViaOffscreen(html) {
 }
 
 async function handleCompare(tab) {
-  chrome.tabs.sendMessage(tab.id, { type: "COMPARE_LOADING" });
-
+  chrome.tabs.sendMessage(tab.id, { type: "COMPARE_LOADING", error: "Parsing archive URL..." });
   const parsed = parsePlaybackUrl(tab.url);
   if (!parsed) {
     chrome.tabs.sendMessage(tab.id, {
@@ -119,6 +118,7 @@ async function handleCompare(tab) {
   }
 
   const { ts: tsA, url: originalUrl } = parsed;
+  chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Getting the earliest capture from CDX..." });
   const tsB = await cdx.getFirstCapture(originalUrl);
   if (!tsB) {
     chrome.tabs.sendMessage(tab.id, {
@@ -138,12 +138,32 @@ async function handleCompare(tab) {
     return;
   }
 
+  chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Checking cache..." });
+  const compareCacheKey = `wbm_compare_${originalUrl}_${tsA}_${tsB}`;
+  const cached = await chrome.storage.local.get([compareCacheKey]);
+  if (cached[compareCacheKey]) {
+    console.log(`[Cache] HIT ${compareCacheKey}`);
+    chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Cache hit! Serving from cache.", status: "done" });
+    const { timestamp: _t, ...cachedPayload } = cached[compareCacheKey];
+    chrome.tabs.sendMessage(tab.id, {
+      type: "COMPARE_RESULT",
+      success: true,
+      ...cachedPayload,
+      tsA,
+      tsB,
+      url: originalUrl
+    });
+    return;
+  }
+
   try {
+    chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Fetching both snapshots from Wayback Machine..." });
     const [htmlA, htmlB] = await Promise.all([
       fetch(`https://web.archive.org/web/${tsA}id_/${originalUrl}`).then(r => r.text()),
       fetch(`https://web.archive.org/web/${tsB}id_/${originalUrl}`).then(r => r.text())
     ]);
 
+    chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Extracting page text via Readability..." });
     await ensureOffscreenDocument();
 
     const [cleanA, cleanB] = await Promise.all([
@@ -153,17 +173,29 @@ async function handleCompare(tab) {
 
     await chrome.offscreen.closeDocument().catch(() => {});
 
+    chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Computing word-level diff..." });
     const diff = wordDiff.diff(cleanA.textContent, cleanB.textContent);
 
     const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff); 
 
     let aiSummary = "";
     if (diffLines && (await checkAIAvailability())) {
+      chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Generating AI summary of changes..." });
       aiSummary = await aiSession.summarizeChanges(
         { before: cleanA.title, after: cleanB.title },
         diffLines
       );
     }
+
+    const cacheData = {
+      titleA: cleanA.title,
+      titleB: cleanB.title,
+      diff,
+      stats: { added, removed },
+      aiSummary,
+      timestamp: Date.now()
+    };
+    await chrome.storage.local.set({ [compareCacheKey]: cacheData });
 
     chrome.tabs.sendMessage(tab.id, {
       type: "COMPARE_RESULT",
