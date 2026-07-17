@@ -383,6 +383,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
+        if (parseInt(tsA) > parseInt(tsB)) {
+          console.log(`[COMPARE] Swapping timestamps to maintain chronological order.`);
+          const temp = tsA;
+          tsA = tsB;
+          tsB = temp;
+        }
+
         chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Checking cache..." });
         const compareCacheKey = `wbm_compare_${originalUrl}_${tsA}_${tsB}`;
         const cached = await chrome.storage.local.get([compareCacheKey]);
