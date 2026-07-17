@@ -325,17 +325,53 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
       try {
         const originalUrl = request.url;
-        console.log(originalUrl);
+        const userQuery = request.text.toLowerCase();
+      
         chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_LOADING" });
-        const { tsA, tsB } = await aiSession.getTimeStamp(request.ts, request.text);
-        console.log("[COMPARE_PARSE_INPUT] AI parsed timestamps:", tsA, tsB);
-        if (!tsA || !tsB) {
-          chrome.tabs.sendMessage(sender.tab.id, {
-            type: "COMPARE_RESULT",
-            success: false,
-            error: "Could not find snapshots to compare with."
-          });
-          return;
+
+        let tsA;
+        let tsB;
+
+        if (userQuery.includes('first') || userQuery.includes('oldest') || userQuery.includes('initial') || userQuery.includes('earliest')) {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Locating the oldest capture..." });
+          tsB = await cdx.getFirstCapture(originalUrl);
+          tsA = request.ts;
+          if (!tsB) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+              type: "COMPARE_RESULT",
+              success: false,
+              error: "Could not find the oldest snapshot to compare with."
+            });
+            return;
+          }
+        }
+        else if (userQuery.includes('last') || userQuery.includes('latest') || userQuery.includes('newest')) {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Locating the latest capture..." });
+          tsB = await cdx.getLastCapture(originalUrl);
+          tsA = request.ts;
+          if (!tsB) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+              type: "COMPARE_RESULT",
+              success: false,
+              error: "Could not find the latest snapshot to compare with."
+            });
+            return;
+          }
+        }
+        else {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "AI parsing date request..." });
+          const tsResponse = await aiSession.getTimeStamp(request.ts, request.text);
+          if (!tsResponse || !tsResponse.tsA || !tsResponse.tsB) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+              type: "COMPARE_RESULT",
+              success: false,
+              error: "Could not find snapshots to compare with."
+            });
+            return;
+          }
+          tsA = tsResponse.tsA;
+          tsB = tsResponse.tsB;
+          console.log("[COMPARE_PARSE_INPUT] AI parsed timestamps:", tsA, tsB);
         }
 
         if (tsA === tsB) {
