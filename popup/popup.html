@@ -41,16 +41,33 @@
                 <span class="action-label">Quality</span>
             </button>
 
-            <button class="action-card" data-action="compare">
+            <button id="menu-btn" class="action-card" data-action="more">
                 <span class="action-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2" y="3" width="8" height="18" rx="1"/>
-                        <rect x="14" y="3" width="8" height="18" rx="1"/>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <circle cx="12" cy="19" r="2"/>
                     </svg>
                 </span>
-                <span class="action-label">Compare</span>
+                <span class="action-label">More Actions</span>
             </button>
+        </div>
 
+        <div id="menu-dropdown" class="menu-dropdown" style="display:none;">
+            <button class="menu-item" data-action="compare">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="8" height="18" rx="1"/>
+                    <rect x="14" y="3" width="8" height="18" rx="1"/>
+                </svg>
+                Compare Snapshots
+            </button>
+            <button class="menu-item" data-action="history">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Compare History
+            </button>
         </div>
 
         <div class="divider"></div>
@@ -67,6 +84,17 @@
             <div id="health-body" class="health-body">
                 <div class="health-loading">Loading...</div>
             </div>
+        </div>
+
+        <div id="history-card" class="health-card" style="display:none;">
+            <div class="health-card-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span id="history-card-title">Compare History</span>
+            </div>
+            <div id="history-body" class="health-body"></div>
         </div>
 
         <div class="setting">
