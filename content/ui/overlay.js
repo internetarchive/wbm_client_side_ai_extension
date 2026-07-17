@@ -528,7 +528,12 @@ function showCompareInput(data) {
         </div>
       </div>`;
       
-    chrome.runtime.sendMessage({ type: "COMPARE_PARSE_INPUT", text });
+    chrome.runtime.sendMessage({
+      type: "COMPARE_PARSE_INPUT",
+      text,
+      ts: _currentSnapshotRef?.ts || "",
+      url: _currentSnapshotRef?.url || ""
+    });
   }
 
   submitBtn.addEventListener('click', submit);
@@ -578,9 +583,9 @@ function showCompareOverlay(data) {
     </button>
 
     <div class="cmp-versions">
-      <div class="cmp-version"><span class="cmp-date">${dateB}</span><span class="cmp-label">Earliest</span></div>
+      <div class="cmp-version"><span class="cmp-date">${dateB}</span></div>
       <span class="cmp-vs">vs</span>
-      <div class="cmp-version cmp-current"><span class="cmp-date">${dateA}</span><span class="cmp-label">Current</span></div>
+      <div class="cmp-version cmp-current"><span class="cmp-date">${dateA}</span></div>
     </div>
     
     <div class="cmp-stats">

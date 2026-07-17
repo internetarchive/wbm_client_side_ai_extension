@@ -2,7 +2,57 @@ export class AISession {
     constructor() {
         this.session = null;
         this.insightSession = null;
+        this.compareSession = null;
     }
+
+    async CompareSessionInit() {
+        try {
+            const availability = await LanguageModel.availability();
+            console.log("Compare AI availability:", availability);
+            
+            if (availability === "available") {
+                this.compareSession = await LanguageModel.create({
+                    expectedOutputLanguages: ["en"],
+                    expectedInputs: [
+                        { type: "text" }
+                    ],
+                    initialPrompts: [
+                        {
+                            role: "system",
+                            content: `You are an expert date and time parser. Convert the user's request into EXACTLY TWO 14-digit Wayback Machine timestamps (YYYYMMDDHHMMSS).
+                            
+                    CRITICAL INSTRUCTIONS:
+                    - You MUST respond with ONLY a valid JSON object matching this exact schema: {"type":"object","properties":{"tsA":{"type":"string"},"tsB":{"type":"string"}},"required":["tsA","tsB"]}
+                    - Do not wrap the JSON in markdown blocks or backticks. Output raw JSON only.
+                    - If the user asks for one date (e.g., "compare with 2010"), tsA MUST be the Current Snapshot Date provided, and tsB is the requested date.
+                    - If the user asks to compare two specific dates (e.g., "2004 vs 2005"), use those for tsA and tsB.
+                    - Default to the 1st of the month/year at 00:00:00 if exact days are missing.
+                    - RULE AGAINST IDENTICAL TIMESTAMPS: tsA and tsB MUST NEVER be exactly the same. If the user asks to compare with the "same day", "earlier today", or if the timestamps would otherwise be identical, set the time of tsB to the very beginning of the day (000000).
+
+                    EXAMPLES:
+                    Current snapshot date: 20260716000000. User request: "Compare with 2015" 
+                    Output: {"tsA": "20260716000000", "tsB": "20150101000000"}
+
+                    Current snapshot date: 20200219213704. User request: "Compare 2004 with 2002" 
+                    Output: {"tsA": "20040101000000", "tsB": "20020101000000"}
+
+                    Current snapshot date: 20240315143000. User request: "Compare with another one from today" 
+                    Output: {"tsA": "20240315143000", "tsB": "20240315000000"}`
+                    }
+                    ]
+                });
+                console.log("Compare AI session created successfully!");
+                return this.compareSession;
+            } else {
+                console.log("Compare AI not available:", availability);
+                return null;
+            }
+        } catch (error) {
+            console.error("Failed to create Compare AI session:", error);
+            return null;
+        }
+    }
+
     async init() {
         try {
             const availability = await LanguageModel.availability();
@@ -92,6 +142,37 @@ ${pageContent}`;
         } catch (error) {
             console.error("Failed to get structured insights:", error);
             return { faqs: [], famousPeople: [] };
+        }
+    }
+
+    async getTimeStamp(currentSnapshotDate, userQuery) {
+        try {
+            if(!this.compareSession) {
+                await this.CompareSessionInit();
+            }
+            const timestampSchema = {
+                type: "object",
+                properties: {
+                    tsA: { 
+                        type: "string",
+                        description: "The first 14-digit Wayback Machine timestamp (YYYYMMDDHHMMSS). If only one date is requested, this MUST be the current snapshot date."
+                    },
+                    tsB: { 
+                        type: "string",
+                        description: "The second 14-digit Wayback Machine timestamp (YYYYMMDDHHMMSS). This is the target comparison date."
+                    }
+                },
+                required: ["tsA", "tsB"],
+                additionalProperties: false
+            };
+            const promptText = `Current snapshot date: ${currentSnapshotDate}. User request: "${userQuery}"`;
+            console.log("Sending to Compare AI:", promptText);
+            const data = await this.compareSession.prompt(promptText, { responseConstraint: timestampSchema });
+            const tsResponse = JSON.parse(data);
+            return tsResponse;
+        } catch (error) {
+            console.error("Error generating timestamp from AI:", error);
+            return null;
         }
     }
 
