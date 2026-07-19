@@ -353,7 +353,9 @@ function getLanguageDisplayName(lang) {
 }
 
 function formatCompareDate(ts) {
-  if (!ts || ts.length < 8) return ts;
+  if (!ts) return "";
+  if (ts === "live") return "Live";
+  if (ts.length < 8) return ts;
   const y = ts.substring(0, 4), m = ts.substring(4, 6), d = ts.substring(6, 8);
   const date = new Date(+y, +m - 1, +d);
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -572,15 +574,17 @@ function showCompareOverlay(data) {
 
   let html = "";
 
+  const showBack = typeof _currentSnapshotRef !== 'undefined' && _currentSnapshotRef;
+
   html += `
   <div class="cmp-header" style="position: relative; display: flex; flex-direction: column; align-items: center; padding: 16px 18px;">
     
-    <button class="cmp-back-btn" title="New comparison" aria-label="Go back" style="position: absolute; left: 16px; top: 16px; background: transparent; border: none; cursor: pointer; color: #666; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: background 0.2s, color 0.2s;">
+    ${showBack ? `<button class="cmp-back-btn" title="New comparison" aria-label="Go back" style="position: absolute; left: 16px; top: 16px; background: transparent; border: none; cursor: pointer; color: #666; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: background 0.2s, color 0.2s;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="19" y1="12" x2="5" y2="12"></line>
         <polyline points="12 19 5 12 12 5"></polyline>
       </svg>
-    </button>
+    </button>` : ""}
 
     <div class="cmp-versions">
       <div class="cmp-version"><span class="cmp-date">${dateB}</span></div>
@@ -635,15 +639,19 @@ function showCompareOverlay(data) {
     <div class="cmp-section-title">Visual Preview</div>
     <div class="cmp-frames">
       <div class="cmp-frame" data-url="${data.tsB}">
-        <div class="cmp-frame-label">${dateB} <span class="cmp-expand-btn" data-ts="${data.tsB}" data-url="${data.url}" data-label="${dateB}">⛶</span></div>
+        <div class="cmp-frame-label">${dateB}${data.tsB !== "live" ? ` <span class="cmp-expand-btn" data-ts="${data.tsB}" data-url="${data.url}" data-label="${dateB}">⛶</span>` : ""}</div>
         <div class="cmp-frame-thumb">
-          <iframe src="https://web.archive.org/web/${data.tsB}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>
+          ${data.tsB !== "live"
+            ? `<iframe src="https://web.archive.org/web/${data.tsB}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>`
+            : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f5f5f5;color:#999;font-size:12px;font-weight:600;">Currently Live</div>`}
         </div>
       </div>
       <div class="cmp-frame" data-url="${data.tsA}">
-        <div class="cmp-frame-label">${dateA} <span class="cmp-expand-btn" data-ts="${data.tsA}" data-url="${data.url}" data-label="${dateA}">⛶</span></div>
+        <div class="cmp-frame-label">${dateA}${data.tsA !== "live" ? ` <span class="cmp-expand-btn" data-ts="${data.tsA}" data-url="${data.url}" data-label="${dateA}">⛶</span>` : ""}</div>
         <div class="cmp-frame-thumb">
-          <iframe src="https://web.archive.org/web/${data.tsA}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>
+          ${data.tsA !== "live"
+            ? `<iframe src="https://web.archive.org/web/${data.tsA}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>`
+            : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f5f5f5;color:#999;font-size:12px;font-weight:600;">Currently Live</div>`}
         </div>
       </div>
     </div>

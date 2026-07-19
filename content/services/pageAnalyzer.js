@@ -9,7 +9,7 @@ async function analyzePage(sendResponse, action) {
   
   if (content.length < 100) {
     console.log("Not enough content to analyze");
-    showOverlay("Wayback Machine AI Extension", "Not enough content to analyze on this page.");
+    showResultOverlay("Not enough content to analyze on this page.");
     sendResponse({ content: null });
     return;
   }

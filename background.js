@@ -124,9 +124,83 @@ async function handleCompare(tab) {
 }
 
 
+async function handleLiveCompare(tab) {
+  if (isPlaybackPage(tab.url)) {
+    handleCompare(tab);
+    return;
+  }
+
+  const liveUrl = tab.url;
+  const liveTitle = tab.title || "";
+
+  chrome.tabs.sendMessage(tab.id, { type: "COMPARE_LOADING" });
+
+  try {
+    chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Finding archived version..." });
+    const archiveTs = await cdx.getLastCapture(liveUrl);
+    if (!archiveTs) {
+      chrome.tabs.sendMessage(tab.id, { type: "COMPARE_RESULT", success: false, error: "No archived version found for this page." });
+      return;
+    }
+
+    chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Getting live page content..." });
+    chrome.tabs.sendMessage(tab.id, { type: "REQUEST_CONTENT", action: "summarize" }, async (response) => {
+      try {
+        if (!response || !response.content) {
+          chrome.tabs.sendMessage(tab.id, { type: "COMPARE_RESULT", success: false, error: "Could not extract content from the live page." });
+          return;
+        }
+        const liveContent = response.content.replace(/^Title:\s*.*?\n\n/, "");
+
+        chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Fetching archived version..." });
+        const archivedHtml = await fetch(`https://web.archive.org/web/${archiveTs}id_/${liveUrl}`).then(r => r.text());
+
+        chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Extracting archived content via Readability..." });
+        await ensureOffscreenDocument();
+        const cleanArchive = await extractTextViaOffscreen(archivedHtml);
+
+        chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Computing differences..." });
+        const diff = wordDiff.diff(cleanArchive.textContent, liveContent);
+        const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff);
+
+        let aiSummary = "";
+        if (diffLines && (await checkAIAvailability())) {
+          chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Generating AI summary of changes..." });
+          aiSummary = await aiSession.summarizeChanges({ before: cleanArchive.title, after: liveTitle }, diffLines);
+        }
+
+        const cacheKey = `wbm_compare_${liveUrl}_live_${archiveTs}`;
+        await chrome.storage.local.set({
+          [cacheKey]: {
+            titleA: liveTitle, titleB: cleanArchive.title,
+            diff, stats: { added, removed }, aiSummary,
+            timestamp: Date.now()
+          }
+        });
+
+        chrome.tabs.sendMessage(tab.id, {
+          type: "COMPARE_RESULT", success: true,
+          titleA: liveTitle, titleB: cleanArchive.title,
+          tsA: "live", tsB: archiveTs,
+          diff, stats: { added, removed }, aiSummary, url: liveUrl
+        });
+      } catch (error) {
+        chrome.tabs.sendMessage(tab.id, { type: "COMPARE_RESULT", success: false, error: `Live comparison failed: ${error.message}` });
+      }
+    });
+  } catch (error) {
+    chrome.tabs.sendMessage(tab.id, { type: "COMPARE_RESULT", success: false, error: `Live comparison failed: ${error.message}` });
+  }
+}
+
 async function handleAction(action, tab) {
   if (action === "compare") {
     await handleCompare(tab);
+    return;
+  }
+
+  if (action === "live-compare") {
+    await handleLiveCompare(tab);
     return;
   }
 
@@ -307,9 +381,7 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === "summarize" || info.menuItemId === "quality" || info.menuItemId === "compare") {
-    await handleAction(info.menuItemId, tab);
-  }
+  await handleAction(info.menuItemId, tab);
 })
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

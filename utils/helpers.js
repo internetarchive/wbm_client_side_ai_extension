@@ -7,7 +7,9 @@ export function isPlaybackPage(url) {
 }
 
 export function formatDate(ts) {
-  if (!ts || ts.length < 8) return "Unknown";
+  if (!ts) return "Unknown";
+  if (ts === "live") return "Live";
+  if (ts.length < 8) return "Unknown";
   const year = ts.substring(0, 4);
   const month = ts.substring(4, 6);
   const day = ts.substring(6, 8);

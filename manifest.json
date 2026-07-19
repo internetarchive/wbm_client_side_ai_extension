@@ -19,7 +19,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://web.archive.org/*"],
+      "matches": ["<all_urls>"],
       "js": [
         "./content/utils/pageTimings.js",
         "./content/lib/Readability.js",
@@ -39,7 +39,7 @@
   "web_accessible_resources": [
     {
       "resources": ["Public/*"],
-      "matches": ["*://web.archive.org/*"]
+      "matches": ["<all_urls>"]
     }
   ],
   "action": {
