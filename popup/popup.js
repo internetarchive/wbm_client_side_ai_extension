@@ -5,6 +5,7 @@ import { isPlaybackPage, formatDate, parsePlaybackUrl } from "../utils/helpers.j
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 const CACHE_PREFIX_HEALTH = "wbm_health_";
 const CACHE_PREFIX_TIMELINE = "wbm_timeline_";
+const CACHE_PREFIX_TREND = "wbm_popup_trend_";
 const cdx = new cdxBase();
 const ai = new AISession();
 
@@ -158,12 +159,12 @@ async function loadPageHealth(forceRefresh = false) {
 
 function renderHealthBody(container, health, cdxUrl, fromCache) {
   if (!health || health.total === 0) {
-    container.innerHTML = `<div class="health-empty">No snapshot data available</div>`;
+    container.innerHTML = `<div class="health-empty">No capture data available</div>`;
     return;
   }
 
   const truncNote = health.isTruncated
-    ? `<div class="health-note">Showing stats for the ${health.total.toLocaleString()} snapshot days (truncated)</div>`
+    ? `<div class="health-note">Showing stats for the ${health.total.toLocaleString()} capture days (truncated)</div>`
     : "";
 
   const cacheNote = fromCache
@@ -193,7 +194,7 @@ function renderHealthBody(container, health, cdxUrl, fromCache) {
 
   container.innerHTML = `
     <div class="health-stats">
-      <div class="health-headline">${health.totalLabel} snapshot day${health.total !== 1 ? "s" : ""}${health.firstArchived ? ` since <strong>${health.firstArchived}</strong>` : ""}</div>
+      <div class="health-headline">${health.totalLabel} capture day${health.total !== 1 ? "s" : ""}${health.firstArchived ? ` since <strong>${health.firstArchived}</strong>` : ""}</div>
       <div class="health-meta">Last archived: ${health.lastArchived || "Unknown"}</div>
       ${truncNote}
       ${statusHtml}
@@ -242,7 +243,7 @@ async function showTimeline(cdxUrl) {
   }
 
   stats.style.display = "none";
-  title.textContent = "📅 Snapshot Timeline";
+  title.textContent = "📅 Capture Timeline";
   container.style.display = "block";
   container.innerHTML = `<div class="health-loading">Loading timeline...</div>`;
 
@@ -471,40 +472,50 @@ async function loadTrendChart(url) {
   const info = document.getElementById("trend-info");
   if (!canvas || !info) return;
 
-  try {
-    const snapshots = await cdx.getYearlySnapshots(url);
-    if (!snapshots || snapshots.length < 2) {
-      info.textContent = "Not enough historical data for a trend chart";
+  const cacheKey = CACHE_PREFIX_TREND + url;
+  const cached = await chrome.storage.local.get([cacheKey]);
+  const cachedEntry = cached[cacheKey];
+  let points = cachedEntry ? cachedEntry.points : null;
+
+  if (points) {
+    drawTrendChart(canvas, points.map(p => ({ ...p, textLength: p.wordCount })));
+    info.textContent = "Analyzing trend...";
+  } else {
+    try {
+      const snapshots = await cdx.getYearlySnapshots(url);
+      if (!snapshots || snapshots.length < 2) {
+        info.textContent = "Not enough historical data for a trend chart";
+        return;
+      }
+
+      points = [];
+      const recent = snapshots.slice(-8);
+
+      for (const s of recent) {
+        info.textContent = `Loading ${s.year}...`;
+        try {
+          const resp = await fetch(`https://web.archive.org/web/${s.ts}id_/${url}`);
+          const html = await resp.text();
+          const text = extractCleanText(html);
+          points.push({ year: s.year, wordCount: text.split(' ').length });
+        } catch {
+          points.push({ year: s.year, wordCount: 0 });
+        }
+      }
+
+      await chrome.storage.local.set({ [cacheKey]: { points, timestamp: Date.now() } });
+      drawTrendChart(canvas, points.map(p => ({ ...p, textLength: p.wordCount })));
+      info.textContent = "Analyzing trend...";
+    } catch (e) {
+      info.textContent = "Could not load evolution data";
+      console.error("Trend chart error:", e);
       return;
     }
+  }
 
-    const points = [];
-    const recent = snapshots.slice(-8);
-    
-    for (const s of recent) {
-      info.textContent = `Loading ${s.year}...`;
-      try {
-        const resp = await fetch(`https://web.archive.org/web/${s.ts}id_/${url}`);
-        const html = await resp.text();
-        const text = extractCleanText(html);
-        
-        points.push({ 
-          year: s.year, 
-          wordCount: text.split(' ').length 
-        });
-      } catch {
-        points.push({ year: s.year, wordCount: 0 });
-      }
-    }
-
-    drawTrendChart(canvas, points.map(p => ({ ...p, textLength: p.wordCount })));
-
-    info.textContent = "Analyzing trend...";
-    
+  try {
     const trendDataString = points.map(p => `${p.year}:${p.wordCount} words`).join(', ');
-    
     const aiInsight = await ai.getTrendInsight(trendDataString);
-
     info.innerHTML = `<strong>AI Insight:</strong> ${aiInsight}`;
 
   } catch (e) {

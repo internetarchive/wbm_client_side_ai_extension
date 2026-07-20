@@ -32,7 +32,7 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
     });
     html += `</select>`;
   }
-  html += `<button class="wbm-tab" data-lang="process">Process</button>`;
+  html += `<button class="wbm-tab" data-lang="process">Logs</button>`;
   html += `</div>`;
 
   html += `<div class="wbm-tab-panel" data-lang="en">`;
