@@ -657,9 +657,23 @@ function showCompareOverlay(data) {
     </div>
   </div>`;
 
+  html += `
+  <div class="cmp-section cmp-chat-section">
+    <div class="cmp-chat-messages" id="cmp-chat-messages"></div>
+    <div class="cmp-chat-input-row">
+      <input type="text" class="cmp-chat-input" id="cmp-chat-input" placeholder="Ask about these changes...">
+      <button class="cmp-chat-send-btn" id="cmp-chat-send-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>`;
+
   if (!popup) {
     const style = document.createElement('style');
-    style.textContent = compareStyle;
+    style.textContent = compareStyle + cmpChatStyle;
     shadow.appendChild(style);
     const popupData = createBasePopup("Snapshot Comparison");
     shadow.appendChild(popupData.popup);
@@ -675,6 +689,10 @@ function showCompareOverlay(data) {
     const backBtn = popupData.content.querySelector(".cmp-back-btn");
     if (backBtn) backBtn.addEventListener("click", () => _currentSnapshotRef && showCompareInput(_currentSnapshotRef));
   } else {
+    const existingStyle = shadow.querySelector("style");
+    if (existingStyle && !existingStyle.textContent.includes("cmp-chat-section")) {
+      existingStyle.textContent += "\n" + cmpChatStyle;
+    }
     content.innerHTML = html;
     content.querySelectorAll(".cmp-expand-btn").forEach(btn => {
       if (btn.classList.contains("cmp-diff-expand")) {
@@ -686,6 +704,31 @@ function showCompareOverlay(data) {
     const backBtn = content.querySelector(".cmp-back-btn");
     if (backBtn) backBtn.addEventListener("click", () => _currentSnapshotRef && showCompareInput(_currentSnapshotRef));
   }
+
+  const chatContainer = (content || popupData.content).closest('[id]') ? (content || popupData.content) : (popup ? content : popupData.content);
+  const chatInput = chatContainer.querySelector("#cmp-chat-input");
+  const chatSend = chatContainer.querySelector("#cmp-chat-send-btn");
+  if (chatInput && chatSend) {
+    const sendMsg = () => {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      appendChatMessage(chatContainer, "user", text);
+      chatInput.value = "";
+      setTimeout(() => appendChatMessage(chatContainer, "ai", "I understand your question. For now, this is a placeholder response while we build the chat logic."), 400);
+    };
+    chatSend.addEventListener("click", sendMsg);
+    chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
+  }
+}
+
+function appendChatMessage(container, role, text) {
+  const messages = container.querySelector("#cmp-chat-messages");
+  if (!messages) return;
+  const msg = document.createElement("div");
+  msg.className = `cmp-chat-msg cmp-chat-msg-${role}`;
+  msg.textContent = text;
+  messages.appendChild(msg);
+  messages.scrollTop = messages.scrollHeight;
 }
 
 function showCompareFrameModal(shadow, ts, url, label) {
