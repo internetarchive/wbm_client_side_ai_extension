@@ -545,6 +545,50 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.type === "CHAT_QUESTION") {
+    (async () => {
+      try {
+        const { context, question } = request;
+        if (!context || !question) {
+          sendResponse({ answer: "Missing context or question." });
+          return;
+        }
+
+        if (!aiSession.session) await aiSession.init();
+        if (!aiSession.session) {
+          sendResponse({ answer: "AI is not available." });
+          return;
+        }
+
+        const prompt = `You are a helpful assistant analyzing a comparison of two versions of a web page.
+
+Context:
+- URL: ${context.url}
+- Version A (newer): ${context.titleA} (${context.tsA})
+- Version B (older): ${context.titleB} (${context.tsB})
+- Changes: +${context.added} words added, -${context.removed} words removed
+- AI Summary: ${context.aiSummary}
+
+Key changes detected:
+${context.diffPreview}
+
+The user has a follow-up question about this comparison. Answer concisely (2-4 sentences) based only on the context provided. If the question asks about something not present in the context, say so.
+
+User: ${question}`;
+
+        const worker = await aiSession.session.clone();
+        const answer = await worker.prompt(prompt);
+        worker.destroy();
+
+        sendResponse({ answer: answer.trim() });
+      } catch (error) {
+        console.error("Chat error:", error);
+        sendResponse({ answer: "Sorry, I encountered an error processing your question." });
+      }
+    })();
+    return true;
+  }
+
   if (request.type === "TRANSLATE_TEXT") {
     (async () => {
       try {

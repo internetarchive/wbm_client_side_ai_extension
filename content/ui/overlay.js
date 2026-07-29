@@ -363,6 +363,7 @@ function formatCompareDate(ts) {
 
 let _compareLoadingRef = null;
 let _currentSnapshotRef = null;
+let _currentCompareCtx = null;
 
 function showCompareLoading(msg) {
   if (_compareLoadingRef) return;
@@ -572,6 +573,18 @@ function showCompareOverlay(data) {
   const removed = data.stats?.removed ?? 0;
   const diff = Array.isArray(data.diff) ? data.diff : [];
 
+  _currentCompareCtx = {
+    titleA: data.titleA || "",
+    titleB: data.titleB || "",
+    tsA: data.tsA,
+    tsB: data.tsB,
+    url: data.url,
+    added,
+    removed,
+    aiSummary: data.aiSummary || "",
+    diffPreview: diff.filter(p => p.type !== "unchanged").slice(0, 80).map(p => `${p.type === "added" ? "+" : "-"} ${p.value}`).join("\n").slice(0, 3000)
+  };
+
   let html = "";
 
   const showBack = typeof _currentSnapshotRef !== 'undefined' && _currentSnapshotRef;
@@ -671,11 +684,12 @@ function showCompareOverlay(data) {
     </div>
   </div>`;
 
+  let popupData;
   if (!popup) {
     const style = document.createElement('style');
     style.textContent = compareStyle + cmpChatStyle;
     shadow.appendChild(style);
-    const popupData = createBasePopup("Snapshot Comparison");
+    popupData = createBasePopup("Snapshot Comparison");
     shadow.appendChild(popupData.popup);
     setupMinimizeBehavior(shadow, popupData.popup);
     popupData.content.innerHTML = html;
@@ -705,7 +719,7 @@ function showCompareOverlay(data) {
     if (backBtn) backBtn.addEventListener("click", () => _currentSnapshotRef && showCompareInput(_currentSnapshotRef));
   }
 
-  const chatContainer = (content || popupData.content).closest('[id]') ? (content || popupData.content) : (popup ? content : popupData.content);
+  const chatContainer = popup ? content : popupData.content;
   const chatInput = chatContainer.querySelector("#cmp-chat-input");
   const chatSend = chatContainer.querySelector("#cmp-chat-send-btn");
   if (chatInput && chatSend) {
@@ -714,7 +728,17 @@ function showCompareOverlay(data) {
       if (!text) return;
       appendChatMessage(chatContainer, "user", text);
       chatInput.value = "";
-      setTimeout(() => appendChatMessage(chatContainer, "ai", "I understand your question. For now, this is a placeholder response while we build the chat logic."), 400);
+      const msgEl = appendChatMessage(chatContainer, "ai", "Thinking...");
+      chrome.runtime.sendMessage(
+        { type: "CHAT_QUESTION", context: _currentCompareCtx, question: text },
+        response => {
+          if (response && response.answer) {
+            msgEl.textContent = response.answer;
+          } else {
+            msgEl.textContent = "Sorry, I couldn't process that question.";
+          }
+        }
+      );
     };
     chatSend.addEventListener("click", sendMsg);
     chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
@@ -723,12 +747,13 @@ function showCompareOverlay(data) {
 
 function appendChatMessage(container, role, text) {
   const messages = container.querySelector("#cmp-chat-messages");
-  if (!messages) return;
+  if (!messages) return null;
   const msg = document.createElement("div");
   msg.className = `cmp-chat-msg cmp-chat-msg-${role}`;
   msg.textContent = text;
   messages.appendChild(msg);
   messages.scrollTop = messages.scrollHeight;
+  return msg;
 }
 
 function showCompareFrameModal(shadow, ts, url, label) {
