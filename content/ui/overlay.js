@@ -573,6 +573,8 @@ function showCompareOverlay(data) {
   const removed = data.stats?.removed ?? 0;
   const diff = Array.isArray(data.diff) ? data.diff : [];
 
+  chrome.runtime.sendMessage({ type: "CHAT_RESET" });
+
   _currentCompareCtx = {
     titleA: data.titleA || "",
     titleB: data.titleB || "",
@@ -723,6 +725,19 @@ function showCompareOverlay(data) {
   const chatInput = chatContainer.querySelector("#cmp-chat-input");
   const chatSend = chatContainer.querySelector("#cmp-chat-send-btn");
   if (chatInput && chatSend) {
+    const chatKey = `wbm_chat_${data.url}_${data.tsB}_${data.tsA}`;
+    chrome.storage.local.get([chatKey], result => {
+      const stored = result[chatKey];
+      if (stored && stored.initialPrompts) {
+        const messagesEl = chatContainer.querySelector("#cmp-chat-messages");
+        if (messagesEl) messagesEl.innerHTML = "";
+        for (const entry of stored.initialPrompts) {
+          if (entry.role === "user" || entry.role === "assistant") {
+            appendChatMessage(chatContainer, entry.role === "user" ? "user" : "ai", entry.content);
+          }
+        }
+      }
+    });
     const sendMsg = () => {
       const text = chatInput.value.trim();
       if (!text) return;

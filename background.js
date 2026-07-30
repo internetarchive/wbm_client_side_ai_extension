@@ -545,6 +545,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.type === "CHAT_RESET") {
+    const key = aiSession.compareChatKey;
+    aiSession.destroyCompareChat();
+    if (key) chrome.storage.local.remove(key);
+    sendResponse({});
+    return;
+  }
+
   if (request.type === "CHAT_QUESTION") {
     (async () => {
       try {
@@ -554,33 +562,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
-        if (!aiSession.session) await aiSession.init();
-        if (!aiSession.session) {
-          sendResponse({ answer: "AI is not available." });
-          return;
+        const sessionKey = `wbm_chat_${context.url}_${context.tsB}_${context.tsA}`;
+
+        if (aiSession.compareChatKey !== sessionKey) {
+          aiSession.destroyCompareChat();
+          const initialized = await aiSession.compareChatInit(sessionKey, context);
+          if (!initialized) {
+            sendResponse({ answer: "AI is not available." });
+            return;
+          }
         }
 
-        const prompt = `You are a helpful assistant analyzing a comparison of two versions of a web page.
-
-Context:
-- URL: ${context.url}
-- Version A (newer): ${context.titleA} (${context.tsA})
-- Version B (older): ${context.titleB} (${context.tsB})
-- Changes: +${context.added} words added, -${context.removed} words removed
-- AI Summary: ${context.aiSummary}
-
-Key changes detected:
-${context.diffPreview}
-
-The user has a follow-up question about this comparison. Answer concisely (2-4 sentences) based only on the context provided. If the question asks about something not present in the context, say so.
-
-User: ${question}`;
-
-        const worker = await aiSession.session.clone();
-        const answer = await worker.prompt(prompt);
-        worker.destroy();
-
-        sendResponse({ answer: answer.trim() });
+        const answer = await aiSession.compareChat(question);
+        sendResponse({ answer });
       } catch (error) {
         console.error("Chat error:", error);
         sendResponse({ answer: "Sorry, I encountered an error processing your question." });

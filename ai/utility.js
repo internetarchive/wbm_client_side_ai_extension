@@ -4,6 +4,95 @@ export class AISession {
         this.insightSession = null;
         this.compareSession = null;
         this.trendSession = null;
+        this.compareChatSession = null;
+    }
+
+    async compareChatInit(sessionKey, context) {
+        try {
+            const availability = await LanguageModel.availability();
+            if (availability !== "available") {
+                console.warn("Compare chat AI not available:", availability);
+                return false;
+            }
+
+            this.compareChatKey = sessionKey;
+
+            const stored = await chrome.storage.local.get([sessionKey]);
+            let sessionData = stored[sessionKey];
+
+            if (sessionData && sessionData.initialPrompts) {
+                this.compareChatSession = await LanguageModel.create(sessionData);
+                this.compareChatHistory = [...sessionData.initialPrompts];
+                return true;
+            }
+
+            const systemPrompt = `You are a helpful assistant analyzing a comparison of two web page versions from the Wayback Machine. You have been given specific context about the comparison - use it to answer the user's questions accurately.
+
+Comparison Context:
+- URL: ${context.url}
+- Version A (newer): ${context.titleA}
+- Version B (older): ${context.titleB}
+- Changes: +${context.added} words added, -${context.removed} words removed
+- AI Summary: ${context.aiSummary}
+
+Key Changes:
+${context.diffPreview}
+
+Rules:
+- Answer concisely in 2-4 sentences.
+- Base your answers strictly on the context provided above.
+- If asked about something not in the context, say so.
+- Do not make up specific facts or data not present in the context.`;
+
+            const initialPrompts = [{ role: "system", content: systemPrompt }];
+
+            this.compareChatSession = await LanguageModel.create({
+                expectedOutputLanguages: ["en"],
+                expectedInputs: [{ type: "text" }],
+                initialPrompts
+            });
+
+            this.compareChatHistory = [...initialPrompts];
+            return true;
+        } catch (error) {
+            console.error("Failed to create compare chat session:", error);
+            return false;
+        }
+    }
+
+    async compareChat(message) {
+        if (!this.compareChatSession) {
+            throw new Error("Chat session not initialized. Call compareChatInit first.");
+        }
+
+        try {
+            const result = await this.compareChatSession.prompt(message);
+
+            this.compareChatHistory.push(
+                { role: "user", content: message },
+                { role: "assistant", content: result }
+            );
+
+            if (this.compareChatKey) {
+                await chrome.storage.local.set({
+                    [this.compareChatKey]: { initialPrompts: this.compareChatHistory, timestamp: Date.now() }
+                });
+            }
+
+            return result;
+        } catch (error) {
+            console.error("Compare chat error:", error);
+            throw error;
+        }
+    }
+
+    destroyCompareChat() {
+        if (this.compareChatSession) {
+            this.compareChatSession.destroy();
+            this.compareChatSession = null;
+        }
+        this.compareChatHistory = null;
+        this.compareChatKey = null;
     }
 
     async CompareSessionInit() {
