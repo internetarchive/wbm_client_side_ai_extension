@@ -111,8 +111,26 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
   html +=   `</div>`;
   html += `</div>`;
 
+  html += `
+  <div class="cmp-section cmp-chat-section" style="margin-top: 10px">
+    <div class="cmp-chat-messages" id="cmp-chat-messages"></div>
+    <div class="cmp-chat-input-row">
+      <input type="text" class="cmp-chat-input" id="cmp-chat-input" placeholder="Ask about this page...">
+      <button class="cmp-chat-send-btn" id="cmp-chat-send-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>`;
+
   content.innerHTML = html;
   shadow.appendChild(popup);
+
+  const chatStyle = document.createElement('style');
+  chatStyle.textContent = cmpChatStyle;
+  shadow.appendChild(chatStyle);
 
   setupMinimizeBehavior(shadow, popup);
 
@@ -158,6 +176,21 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
   streamContentElement = processPanel.querySelector('.wbm-stream-text');
   streamedText = "";
   _processStepCount = 0;
+
+  const chatInput = content.querySelector("#cmp-chat-input");
+  const chatSend = content.querySelector("#cmp-chat-send-btn");
+  if (chatInput && chatSend) {
+    const sendMsg = () => {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      appendChatMessage(content, "user", text);
+      chatInput.value = "";
+      const msgEl = appendChatMessage(content, "ai", "Logic coming soon...");
+      setTimeout(() => { msgEl.textContent = "Chat for summary will be implemented next."; }, 600);
+    };
+    chatSend.addEventListener("click", sendMsg);
+    chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
+  }
 
   return content;
 }
