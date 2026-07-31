@@ -421,7 +421,11 @@ chrome.runtime.onMessage.addListener((request) => {
       pending.fullText += request.chunk;
       pending.el.textContent = pending.fullText;
     } else if (request.type === "CHAT_STREAM_END") {
-      if (!pending.fullText) pending.el.textContent = "Response stopped.";
+      if (pending.fullText) {
+        pending.el.innerHTML = marked.parse(pending.fullText);
+      } else {
+        pending.el.textContent = "Response stopped.";
+      }
       restoreSendBtn(pending.chatSend, pending.chatInput);
       delete _pendingStreamMsgs[request.messageId];
     } else {
@@ -838,7 +842,11 @@ function appendChatMessage(container, role, text) {
   if (!messages) return null;
   const msg = document.createElement("div");
   msg.className = `cmp-chat-msg cmp-chat-msg-${role}`;
-  msg.textContent = text;
+  if (role === "ai") {
+    msg.innerHTML = marked.parse(text || "");
+  } else {
+    msg.textContent = text;
+  }
   messages.appendChild(msg);
   messages.scrollTop = messages.scrollHeight;
   return msg;
