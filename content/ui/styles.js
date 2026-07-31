@@ -103,8 +103,9 @@ const hostStyle = `
     }
 
     #wbm-ai-content {
+        flex: 1;
+        min-height: 0;
         padding: 16px 18px;
-        max-height: 400px;
         overflow-y: auto;
         font-size: 14px;
         color: #333333;
@@ -1142,6 +1143,15 @@ const cmpChatStyle = `
     transition: background 0.2s;
   }
   .cmp-chat-send-btn:hover {
+    background: #8C242A;
+  }
+  .cmp-chat-send-btn.cmp-chat-stop-btn {
+    background: #AB2D33;
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+  }
+  .cmp-chat-send-btn.cmp-chat-stop-btn:hover {
     background: #8C242A;
   }
 `;

@@ -9,6 +9,7 @@ const storageCleaner = new StorageCleaner();
 storageCleaner.runSweep(1);
 const cdx = new cdxBase();
 const wordDiff = new WordDiffEngine();
+const _chatStreamControllers = {};
 
 chrome.runtime.onInstalled.addListener(async () => {
   chrome.contextMenus.create({
@@ -553,12 +554,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return;
   }
 
-  if (request.type === "CHAT_QUESTION") {
+  if (request.type === "CHAT_QUESTION_START") {
     (async () => {
       try {
-        const { context, question } = request;
-        if (!context || !question) {
-          sendResponse({ answer: "Missing context or question." });
+        const { context, question, messageId } = request;
+        if (!context || !question || !messageId) {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: "Missing parameters." });
           return;
         }
 
@@ -568,19 +569,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           aiSession.destroyCompareChat();
           const initialized = await aiSession.compareChatInit(sessionKey, context);
           if (!initialized) {
-            sendResponse({ answer: "AI is not available." });
+            chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: "AI is not available." });
             return;
           }
         }
 
-        const answer = await aiSession.compareChat(question);
-        sendResponse({ answer });
+        const controller = new AbortController();
+        _chatStreamControllers[messageId] = controller;
+
+        try {
+          const fullText = await aiSession.compareChatStream(question, (chunk) => {
+            chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_CHUNK", messageId, chunk });
+          }, controller.signal);
+
+          chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_END", messageId, fullText });
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_END", messageId, fullText: "" });
+          } else {
+            throw err;
+          }
+        } finally {
+          delete _chatStreamControllers[messageId];
+        }
       } catch (error) {
-        console.error("Chat error:", error);
-        sendResponse({ answer: "Sorry, I encountered an error processing your question." });
+        console.error("Chat stream error:", error);
+        chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: error.message });
       }
     })();
     return true;
+  }
+
+  if (request.type === "CHAT_STOP") {
+    const { messageId } = request;
+    if (messageId && _chatStreamControllers[messageId]) {
+      _chatStreamControllers[messageId].abort();
+      delete _chatStreamControllers[messageId];
+    }
+    sendResponse({});
+    return;
   }
 
   if (request.type === "TRANSLATE_TEXT") {

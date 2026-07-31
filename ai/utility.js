@@ -60,17 +60,24 @@ Rules:
         }
     }
 
-    async compareChat(message) {
+    async compareChatStream(message, onChunk, signal) {
         if (!this.compareChatSession) {
             throw new Error("Chat session not initialized. Call compareChatInit first.");
         }
 
+        let fullText = "";
+
         try {
-            const result = await this.compareChatSession.prompt(message);
+            const stream = await this.compareChatSession.promptStreaming(message, { signal });
+
+            for await (const chunk of stream) {
+                fullText += chunk;
+                onChunk(chunk);
+            }
 
             this.compareChatHistory.push(
                 { role: "user", content: message },
-                { role: "assistant", content: result }
+                { role: "assistant", content: fullText }
             );
 
             if (this.compareChatKey) {
@@ -79,11 +86,26 @@ Rules:
                 });
             }
 
-            return result;
+            return fullText;
         } catch (error) {
-            console.error("Compare chat error:", error);
+            if (fullText) {
+                this.compareChatHistory.push(
+                    { role: "user", content: message },
+                    { role: "assistant", content: fullText + " [stopped]" }
+                );
+
+                if (this.compareChatKey) {
+                    await chrome.storage.local.set({
+                        [this.compareChatKey]: { initialPrompts: this.compareChatHistory, timestamp: Date.now() }
+                    });
+                }
+            }
             throw error;
         }
+    }
+
+    async compareChat(message) {
+        return this.compareChatStream(message, () => {});
     }
 
     destroyCompareChat() {

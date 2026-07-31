@@ -397,6 +397,42 @@ function formatCompareDate(ts) {
 let _compareLoadingRef = null;
 let _currentSnapshotRef = null;
 let _currentCompareCtx = null;
+let _pendingStreamMsgs = {};
+
+function restoreSendBtn(chatSend, chatInput) {
+  if (!chatSend) return;
+  chatSend._streaming = false;
+  chatSend._msgId = null;
+  chatSend.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13"></line>
+    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+  </svg>`;
+  chatSend.className = "cmp-chat-send-btn";
+  chatSend.disabled = false;
+  if (chatInput) { chatInput.disabled = false; chatInput.focus(); }
+}
+
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.type === "CHAT_STREAM_CHUNK" || request.type === "CHAT_STREAM_END" || request.type === "CHAT_STREAM_ERROR") {
+    const pending = _pendingStreamMsgs[request.messageId];
+    if (!pending) return false;
+
+    if (request.type === "CHAT_STREAM_CHUNK") {
+      pending.fullText += request.chunk;
+      pending.el.textContent = pending.fullText;
+    } else if (request.type === "CHAT_STREAM_END") {
+      if (!pending.fullText) pending.el.textContent = "Response stopped.";
+      restoreSendBtn(pending.chatSend, pending.chatInput);
+      delete _pendingStreamMsgs[request.messageId];
+    } else {
+      pending.el.textContent = "Error: " + (request.error || "Unknown error");
+      restoreSendBtn(pending.chatSend, pending.chatInput);
+      delete _pendingStreamMsgs[request.messageId];
+    }
+    return false;
+  }
+  return false;
+});
 
 function showCompareLoading(msg) {
   if (_compareLoadingRef) return;
@@ -772,20 +808,24 @@ function showCompareOverlay(data) {
       }
     });
     const sendMsg = () => {
+      if (chatSend._streaming) {
+        chrome.runtime.sendMessage({ type: "CHAT_STOP", messageId: chatSend._msgId });
+        return;
+      }
       const text = chatInput.value.trim();
       if (!text) return;
       appendChatMessage(chatContainer, "user", text);
       chatInput.value = "";
-      const msgEl = appendChatMessage(chatContainer, "ai", "Thinking...");
+      const msgEl = appendChatMessage(chatContainer, "ai", "");
+      const msgId = "cmp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      chatSend._streaming = true;
+      chatSend._msgId = msgId;
+      chatSend.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor"/></svg>`;
+      chatSend.className = "cmp-chat-send-btn cmp-chat-stop-btn";
+      _pendingStreamMsgs[msgId] = { el: msgEl, chatInput, chatSend, fullText: "" };
+      chatInput.disabled = true;
       chrome.runtime.sendMessage(
-        { type: "CHAT_QUESTION", context: _currentCompareCtx, question: text },
-        response => {
-          if (response && response.answer) {
-            msgEl.textContent = response.answer;
-          } else {
-            msgEl.textContent = "Sorry, I couldn't process that question.";
-          }
-        }
+        { type: "CHAT_QUESTION_START", context: _currentCompareCtx, question: text, messageId: msgId }
       );
     };
     chatSend.addEventListener("click", sendMsg);
