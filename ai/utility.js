@@ -1,3 +1,5 @@
+import { formatDate } from "../utils/helpers.js";
+
 export class AISession {
     constructor() {
         this.session = null;
@@ -30,8 +32,8 @@ export class AISession {
 
 Comparison Context:
 - URL: ${context.url}
-- Version A (newer): ${context.titleA}
-- Version B (older): ${context.titleB}
+- Version A (newer, ${formatDate(context.tsA)}): ${context.titleA}
+- Version B (older, ${formatDate(context.tsB)}): ${context.titleB}
 - Changes: +${context.added} words added, -${context.removed} words removed
 - AI Summary: ${context.aiSummary}
 
@@ -41,6 +43,7 @@ ${context.diffPreview}
 Rules:
 - Answer concisely in 2-4 sentences.
 - Base your answers strictly on the context provided above.
+- When referring to a version, always use its exact archived date (e.g. "the May 27, 2005 version") instead of "version A" or "version B". Never invent or alter these dates.
 - If asked about something not in the context, say so.
 - Do not make up specific facts or data not present in the context.`;
 
@@ -600,12 +603,12 @@ ${timingSummary}`;
                 trimmed = true;
             }
 
+            const titleChanged = titleChanges && titleChanges.before !== titleChanges.after;
+            const noTextChanges = !diffText.trim();
+
             const prompt = `Compare these two versions of a web page and summarize what changed in 2-3 sentences. Focus on meaningful content changes, not formatting.
-
-${titleChanges ? `Title changed from "${titleChanges.before}" to "${titleChanges.after}"` : ""}
-
-Changes:
-${diffText}${trimmed ? "\n\nNote: The changes list was truncated. Focus on the most significant changes visible." : ""}`;
+${titleChanged ? `\nTitle changed from "${titleChanges.before}" to "${titleChanges.after}".` : ""}
+${noTextChanges ? "\nNo textual content differences were detected between the two versions." : `\nChanges:\n${diffText}${trimmed ? "\n\nNote: The changes list was truncated. Focus on the most significant changes visible." : ""}`}`;
 
             const result = await worker.prompt(prompt);
             worker.destroy();

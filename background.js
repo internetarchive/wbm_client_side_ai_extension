@@ -12,34 +12,36 @@ const wordDiff = new WordDiffEngine();
 const _chatStreamControllers = {};
 
 chrome.runtime.onInstalled.addListener(async () => {
-  chrome.contextMenus.create({
-    id: "wbm-parent",
-    title: "Wayback Machine AI Helper",
-    contexts: ["page", "selection"],
-    documentUrlPatterns: ["*://web.archive.org/web/*"]
-  });
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "wbm-parent",
+      title: "Wayback Machine AI Helper",
+      contexts: ["page", "selection"],
+      documentUrlPatterns: ["*://web.archive.org/web/*"]
+    });
 
-  chrome.contextMenus.create({
-    id: "quality",
-    parentId: "wbm-parent",
-    title: "Check page quality",
-    contexts: ["page"]
-  });
+    chrome.contextMenus.create({
+      id: "quality",
+      parentId: "wbm-parent",
+      title: "Check page quality",
+      contexts: ["page"]
+    });
 
-  chrome.contextMenus.create({
-    id: "summarize",
-    parentId: "wbm-parent",
-    title: "Summarize Page",
-    contexts: ["page"]
-  });
+    chrome.contextMenus.create({
+      id: "summarize",
+      parentId: "wbm-parent",
+      title: "Summarize Page",
+      contexts: ["page"]
+    });
 
-  chrome.contextMenus.create({
-    id: "compare",
-    parentId: "wbm-parent",
-    title: "Compare Snapshots",
-    contexts: ["page"]
+    chrome.contextMenus.create({
+      id: "compare",
+      parentId: "wbm-parent",
+      title: "Compare Snapshots",
+      contexts: ["page"]
+    });
+    console.log("Extension installed!");
   });
-  console.log("Extension installed!");
   await aiSession.init();
 });
 
@@ -165,7 +167,7 @@ async function handleLiveCompare(tab) {
         const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff);
 
         let aiSummary = "";
-        if (diffLines && (await checkAIAvailability())) {
+        if (await checkAIAvailability()) {
           chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Generating AI summary of changes..." });
           aiSummary = await aiSession.summarizeChanges({ before: cleanArchive.title, after: liveTitle }, diffLines);
         }
@@ -503,7 +505,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff); 
 
         let aiSummary = "";
-        if (diffLines && (await checkAIAvailability())) {
+        if (await checkAIAvailability()) {
           chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Generating AI summary of changes..." });
           aiSummary = await aiSession.summarizeChanges(
             { before: cleanA.title, after: cleanB.title },

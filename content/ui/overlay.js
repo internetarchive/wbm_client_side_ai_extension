@@ -5,6 +5,7 @@ let _processStepCount = 0;
 function showResultOverlay(summary) {
   const shadow = createShadowHost();
   const { popup, content } = createBasePopup("AI Result");
+  popup.style.height = "auto";
   content.innerHTML = `<p style="padding: 12px 16px; font-size: 13.5px; color: #8e8e93;">${summary}</p>`;
   shadow.appendChild(popup);
   setupMinimizeBehavior(shadow, popup);
@@ -418,9 +419,17 @@ chrome.runtime.onMessage.addListener((request) => {
     if (!pending) return false;
 
     if (request.type === "CHAT_STREAM_CHUNK") {
+      if (pending.thinkingEl) {
+        pending.thinkingEl.remove();
+        pending.thinkingEl = null;
+      }
       pending.fullText += request.chunk;
       pending.el.textContent = pending.fullText;
     } else if (request.type === "CHAT_STREAM_END") {
+      if (pending.thinkingEl) {
+        pending.thinkingEl.remove();
+        pending.thinkingEl = null;
+      }
       if (pending.fullText) {
         pending.el.innerHTML = marked.parse(pending.fullText);
       } else {
@@ -429,6 +438,10 @@ chrome.runtime.onMessage.addListener((request) => {
       restoreSendBtn(pending.chatSend, pending.chatInput);
       delete _pendingStreamMsgs[request.messageId];
     } else {
+      if (pending.thinkingEl) {
+        pending.thinkingEl.remove();
+        pending.thinkingEl = null;
+      }
       pending.el.textContent = "Error: " + (request.error || "Unknown error");
       restoreSendBtn(pending.chatSend, pending.chatInput);
       delete _pendingStreamMsgs[request.messageId];
@@ -445,6 +458,7 @@ function showCompareLoading(msg) {
   style.textContent = compareStyle;
   shadow.appendChild(style);
   const { popup, content } = createBasePopup("Snapshot Comparison");
+  popup.style.height = "auto";
   shadow.appendChild(popup);
   setupMinimizeBehavior(shadow, popup);
   content.innerHTML = `
@@ -628,6 +642,7 @@ function showCompareOverlay(data) {
       style.textContent = compareStyle;
       shadow.appendChild(style);
       const { popup, content } = createBasePopup("Snapshot Comparison");
+      popup.style.height = "auto";
       shadow.appendChild(popup);
       content.innerHTML = `<div class="cmp-section" style="padding:24px 18px;"><p style="color:#D0021B;font-size:14px;">${escapeHtml(data.error)}</p></div>`;
       setupMinimizeBehavior(shadow, popup);
@@ -639,6 +654,8 @@ function showCompareOverlay(data) {
   const popup = _compareLoadingRef ? _compareLoadingRef.popup : null;
   const content = _compareLoadingRef ? _compareLoadingRef.content : null;
   _compareLoadingRef = null;
+
+  if (popup) popup.style.height = "";
 
   const dateA = formatCompareDate(data.tsA);
   const dateB = formatCompareDate(data.tsB);
@@ -821,12 +838,16 @@ function showCompareOverlay(data) {
       appendChatMessage(chatContainer, "user", text);
       chatInput.value = "";
       const msgEl = appendChatMessage(chatContainer, "ai", "");
+      const thinkingEl = document.createElement("div");
+      thinkingEl.className = "thinking-dots";
+      thinkingEl.innerHTML = `<span></span><span></span><span></span>`;
+      msgEl.appendChild(thinkingEl);
       const msgId = "cmp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
       chatSend._streaming = true;
       chatSend._msgId = msgId;
       chatSend.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor"/></svg>`;
       chatSend.className = "cmp-chat-send-btn cmp-chat-stop-btn";
-      _pendingStreamMsgs[msgId] = { el: msgEl, chatInput, chatSend, fullText: "" };
+      _pendingStreamMsgs[msgId] = { el: msgEl, thinkingEl, chatInput, chatSend, fullText: "" };
       chatInput.disabled = true;
       chrome.runtime.sendMessage(
         { type: "CHAT_QUESTION_START", context: _currentCompareCtx, question: text, messageId: msgId }

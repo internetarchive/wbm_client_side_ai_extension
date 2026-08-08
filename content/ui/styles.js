@@ -10,6 +10,7 @@ const hostStyle = `
         top: 20px;
         right: 20px;
         width: 360px;
+        height: 480px;
         max-width: 90%;
         z-index: 2147483647;
         display: flex;
