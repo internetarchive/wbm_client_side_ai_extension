@@ -56,20 +56,6 @@ export class cdxBase {
     return data?.[1]?.[0] ?? null;
   } 
 
-  async getAvailability_CDX(url) {
-    const ts = await this.getFirstCapture(url);
-    if(!ts) return null;
-    const apiUrl = this.#buildCDXUrl(url, { fl: "statuscode", from: ts, to: ts });
-    const data = await this.#cdxFetch(apiUrl);
-    const status = data?.[1]?.[0] || "200";
-    return {
-    status,
-      available: true,
-      url: `https://web.archive.org/web/${ts}/${url}`,
-      timestamp: ts,
-    };
-  }
-
   async getTimelineData(playbackUrl = "", url = "") {
     let originalUrl = url;
 

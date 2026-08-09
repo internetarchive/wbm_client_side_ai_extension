@@ -34,6 +34,5 @@ function getPageTimings() {
     grouped,
     scripts: (grouped["script"] || []).slice(0, 3),
     stylesheets: (grouped["css"] || []).slice(0, 3),
-    images: (grouped["img"] || []).slice(0, 3),
   };
 }
