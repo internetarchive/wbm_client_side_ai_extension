@@ -102,8 +102,9 @@ Scripts: ${timings.scripts.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
 Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
     `;
           console.log(`Analyzing for action: ${info.menuItemId}`);
-          const result = await aiSession.analyzePage(response.content,timingSummary, info.menuItemId, targetLanguage, tab.id);
 
+          const result = await aiSession.analyzePage(response.content,timingSummary, info.menuItemId, targetLanguage, tab.id);
+          
           if(info.menuItemId === "summarize") {
             chrome.tabs.sendMessage(tab.id, {
               type: "TRANSLATED_RESULT",
