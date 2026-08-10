@@ -2,6 +2,25 @@
 
 Google Summer of Code (GSoC) 2026 Wayback Machine Client-Side AI Extension project
 
+## Branch Structure
+
+```
+main
+  └── sudipta/extension-setup
+       └── feature/right-click-menu          ← Parent branch, base for all features
+            ├── feature/streaming-response    ← Adds streaming AI response
+            │
+            └── feature/resizable-minimize-overlay   ← Refactored UI + resizable/minimize
+                 └── feature/faqs-famous-persons     ← (current) FAQs + famous people insights
+```
+
+- **`main`** — Initial project setup
+- **`sudipta/extension-setup`** — Development environment setup
+- **`feature/right-click-menu`** — Context menu integration with network timing and quality analysis
+- **`feature/streaming-response`** — Real-time streaming of AI responses via Gemini Nano
+- **`feature/resizable-minimize-overlay`** — Shadow DOM isolation, resizable/minimizable popup, refactored into modular UI files
+- **`feature/faqs-famous-persons`** — Structured insights (FAQs + famous people) alongside streamed summaries
+
 ## Installation (Development)
 
 1. Clone the repository
@@ -21,7 +40,9 @@ cd wbm_client_side_ai_extension
 
 6. Right-click anywhere on the page to open the context menu.
 
-7. Translate option will only appear when we select some text to translate.
+## Demo
+
+[<img src="https://img.youtube.com/vi/FOKc8hIP7dQ/maxresdefault.jpg" width="50%">](https://youtu.be/FOKc8hIP7dQ)
 
 ## GSoC Documentation
 

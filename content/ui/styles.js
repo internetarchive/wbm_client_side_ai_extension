@@ -223,6 +223,154 @@ const hostStyle = `
         }
     }
 
+    .wbm-divider {
+        height: 1px;
+        background: rgba(0, 0, 0, 0.06);
+        margin: 0 16px;
+    }
+
+    .wbm-insights-section {
+        padding: 12px 16px;
+    }
+
+    .wbm-insights-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #3a3a3c;
+        margin-bottom: 10px;
+    }
+
+    .wbm-faq-item {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .wbm-faq-item:last-child {
+        border-bottom: none;
+    }
+
+    .wbm-faq-question {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 13px;
+        color: #1c1c1e;
+        user-select: none;
+        transition: color 0.2s ease;
+    }
+
+    .wbm-faq-question:hover {
+        color: #007aff;
+    }
+
+    .wbm-faq-icon {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.05);
+        font-size: 14px;
+        font-weight: 600;
+        color: #6e6e73;
+        transition: all 0.25s ease;
+        flex-shrink: 0;
+    }
+
+    .wbm-faq-question:hover .wbm-faq-icon {
+        background: rgba(0, 122, 255, 0.1);
+        color: #007aff;
+    }
+
+    .wbm-faq-icon-open {
+        background: rgba(0, 122, 255, 0.1) !important;
+        color: #007aff !important;
+    }
+
+    .wbm-faq-answer {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        font-size: 13px;
+        color: #6e6e73;
+        line-height: 1.6;
+    }
+
+    .wbm-faq-answer.wbm-faq-open {
+        max-height: 500px;
+        padding-bottom: 12px;
+    }
+
+    .wbm-faq-answer p {
+        margin-bottom: 6px;
+    }
+
+    .wbm-famous-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .wbm-famous-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 14px;
+        background: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        border-radius: 100px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #6e6e73;
+        transition: all 0.2s ease;
+    }
+
+    .wbm-famous-chip:hover {
+        background: rgba(0, 0, 0, 0.06);
+        transform: translateY(-1px);
+    }
+
+    .wbm-loading-blur {
+        filter: blur(6px);
+        opacity: 0.5;
+        transition: filter 0.3s ease, opacity 0.3s ease;
+        pointer-events: none;
+    }
+
+    .wbm-loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        z-index: 100;
+        border-radius: 18px;
+    }
+
+    .wbm-spinner {
+        width: 24px;
+        height: 24px;
+        border: 2.5px solid rgba(255, 255, 255, 0.25);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: wbm-spin 0.7s linear infinite;
+    }
+
+    @keyframes wbm-spin {
+        to { transform: rotate(360deg); }
+    }
+
     @media (prefers-color-scheme: dark) {
         #wbm-ai-popup {
             background: rgba(28, 28, 30, 0.72);
@@ -235,17 +383,29 @@ const hostStyle = `
         }
 
         #wbm-ai-header {
-        background: rgba(255, 255, 255, 0.04);
-        border-bottom-color: rgba(255, 255, 255, 0.07);
-        color: #aeaeb2;
+            background: rgba(255, 255, 255, 0.04);
+            border-bottom-color: rgba(255, 255, 255, 0.07);
+            color: #aeaeb2;
+        }
+
+        #wbm-ai-minimize,
+        #wbm-ai-close {
+            background: rgba(255, 255, 255, 0.07);
+            color: #98989d;
+        }
+
+        #wbm-ai-minimize:hover,
+        #wbm-ai-close:hover {
+            background: rgba(255, 255, 255, 0.13);
+            color: #f2f2f7;
         }
 
         #wbm-ai-content {
-        color: #e5e5ea;
+            color: #e5e5ea;
         }
 
         #wbm-ai-content strong {
-        color: #ffffff;
+            color: #ffffff;
         }
 
         #wbm-ai-content h1,
@@ -254,18 +414,69 @@ const hostStyle = `
             color: #f2f2f7;
         }
 
-        #wbm-ai-close {
-            background: rgba(255, 255, 255, 0.07);
-            color: #98989d;
-        }
-
-        #wbm-ai-close:hover {
-            background: rgba(255, 255, 255, 0.13);
-            color: #f2f2f7;
-        }
-
         #wbm-ai-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.1);
+        }
+
+        .wbm-resize-handle svg {
+            filter: invert(1);
+        }
+
+        .thinking-dots span { 
+            background: #98989d; 
+        }
+
+        .wbm-divider { 
+            background: rgba(255, 255, 255, 0.06); 
+        }
+
+        .wbm-insights-title { 
+            color: #AEAEB2; 
+        }
+
+        .wbm-faq-item {
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .wbm-faq-question { 
+            color: #e5e5ea; 
+        }
+
+        .wbm-faq-question:hover { 
+            color: #0a84ff; 
+        }
+
+        .wbm-faq-icon { 
+            background: rgba(255, 255, 255, 0.08); 
+            color: #98989d; 
+        }
+
+        .wbm-faq-question:hover .wbm-faq-icon { 
+            background: rgba(10, 132, 255, 0.15); 
+            color: #0a84ff; 
+        }
+
+        .wbm-faq-icon-open { 
+            background: rgba(10, 132, 255, 0.15) !important; 
+            color: #0a84ff !important; 
+        }
+
+        .wbm-faq-answer { 
+            color: #AEAEB2; 
+        }
+
+        .wbm-famous-chip {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #e5e5ea;
+        }
+
+        .wbm-famous-chip:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .wbm-loading-overlay {
+            background: rgba(0, 0, 0, 0.2);
         }
     }
 `;

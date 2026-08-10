@@ -109,8 +109,8 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
             chrome.tabs.sendMessage(tab.id, {
               type: "TRANSLATED_RESULT",
               action: info.menuItemId,
-              success: Boolean(result?.success),
-              summary: result?.summary ?? result?.error
+              success: Boolean(analysisResult?.success),
+              summary: analysisResult?.summary ?? analysisResult?.error
             })
           }
 
@@ -118,10 +118,17 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
             chrome.tabs.sendMessage(tab.id, {
               type: "TIMING_RESULT",
               action: info.menuItemId,
-              success: Boolean(result?.success),
-              summary: result?.summary ?? result?.error,
+              success: Boolean(analysisResult?.success),
+              summary: analysisResult?.summary ?? analysisResult?.error,
               timings: timings
             })
+          }
+
+          if (insights && (insights.faqs?.length || insights.famousPeople?.length)) {
+            chrome.tabs.sendMessage(tab.id, {
+              type: "STRUCTURED_INSIGHTS",
+              insights
+            });
           }
         }
       );

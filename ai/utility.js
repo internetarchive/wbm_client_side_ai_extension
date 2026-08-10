@@ -1,23 +1,61 @@
 export class AISession {
     constructor() {
         this.session = null;
+        this.insightSession = null;
     }
     async init() {
         try {
             const availability = await LanguageModel.availability();
             console.log("AI availability:", availability);
             if(availability === "available") {
-                this.session = await LanguageModel.create({
-                    expectedOutputLanguages: ["en"]
-                });
-                console.log("AI session created successfully!");
+                [this.session, this.insightSession] = await Promise.all([
+                    LanguageModel.create({ expectedOutputLanguages: ["en"] }),
+                    LanguageModel.create({ expectedOutputLanguages: ["en"] })
+                ]);
+                console.log("AI sessions created successfully!");
             }
             else {
                 console.log("AI not available:", availability);
             }
         } catch ( error ) {
-            console.error("Failed to create AI session:", error);
+            console.error("Failed to create AI sessions:", error);
         } 
+    }
+
+    async getStructuredInsights(pageContent) {
+        try {
+            if (!this.insightSession) {
+                await this.init();
+                if (!this.insightSession) return { faqs: [], famousPeople: [] };
+            }
+            const prompt = `Based on this archived web page, generate interesting FAQs and notable personalities related to the page's topic.
+
+Return ONLY valid JSON matching this exact schema:
+{
+  "faqs": [{ "question": "string", "answer": "string" }],
+  "famousPeople": ["string"]
+}
+
+Rules:
+- FAQs: 3-5 interesting questions with clear, informative answers
+- famousPeople: 2-4 notable personalities associated with this topic
+- No explanations, no markdown, no code fences \u2014 pure JSON only.
+
+Page content:
+${pageContent}`;
+
+            const result = await this.insightSession.prompt(prompt);
+
+            const jsonStr = result.replace(/```(?:json)?\s*([\s\S]*?)\s*```/g, '$1').trim();
+            const parsed = JSON.parse(jsonStr);
+            return {
+                faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
+                famousPeople: Array.isArray(parsed.famousPeople) ? parsed.famousPeople : []
+            };
+        } catch (error) {
+            console.error("Failed to get structured insights:", error);
+            return { faqs: [], famousPeople: [] };
+        }
     }
 
     async analyzePage(pageContent,  timingSummary, action, targetLanguage, tabId) {

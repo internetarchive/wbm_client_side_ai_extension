@@ -1,3 +1,5 @@
+let currentContentElement = null;
+
 function showOverlay(action, result, timings) {
   const shadow = createShadowHost();
 
@@ -20,6 +22,7 @@ function showOverlay(action, result, timings) {
   }
 
   shadow.appendChild(popup);
+  currentContentElement = content;
 }
 
 
@@ -48,6 +51,20 @@ function createStreamingOverlay(action = "AI Response") {
   return content;
 }
 
+
+function showStreamingLoading() {
+  if (!streamContentElement) return;
+
+  const popup = streamContentElement.closest('#wbm-ai-popup');
+  if (!popup) return;
+
+  streamContentElement.classList.add('wbm-loading-blur');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'wbm-loading-overlay';
+  overlay.innerHTML = '<div class="wbm-spinner"></div>';
+  popup.appendChild(overlay);
+}
 
 function appendStreamChunk(chunk) {
   if (!streamContentElement) return;
