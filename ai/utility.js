@@ -158,20 +158,15 @@ ${timingSummary}`;
                 });
             }
 
-            if (action === "quality") {
-                try {
-                    const parsed = JSON.parse(fullText);
-                    if (parsed.analysis && Array.isArray(parsed.analysis)) {
-                        fullText = parsed.analysis.map(item => `**${item.question}**\n\n${item.answer}`).join('\n\n');
-                    }
-                } catch (e) {
-                    console.error("Failed to parse quality JSON:", e);
-                }
-            }
-
+            chrome.tabs.sendMessage(tabId, {
+                type: "STREAM_END"
+            });
             console.timeEnd(action);
-
+            
             if (targetLanguage && targetLanguage !== 'en') {
+                chrome.tabs.sendMessage(tabId, {
+                    type: "SHOW_TRANSLATING"
+                })
                 const translated = await this.translateResult(fullText, targetLanguage);
                 return {
                     success: true,
