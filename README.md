@@ -14,7 +14,8 @@ main
                  └── feature/faqs-famous-persons     ← FAQs + famous people insights
                        └── feature/translate-faqs-insights    ← Translation for all outputs
                              └── feature/accordion-tab-view    ← Accordion + tab UI
-                                  └── feature/loading-ui-refinements   ← (current) Spinner/loading polish
+                                   └── feature/loading-ui-refinements   ← Spinner/loading polish
+                                        └── feature/ai-session-enhancements  ← (current) System prompts + responseConstraint
 ```
 
 - **`main`** — Initial project setup
@@ -26,6 +27,7 @@ main
 - **`feature/translate-faqs-insights`** — Translator API for FAQs, famous people, and summary text
 - **`feature/accordion-tab-view`** — Accordion containers, tab switching, and unified loading states
 - **`feature/loading-ui-refinements`** — Changed the UI to match the wayback machine colour
+- **`feature/ai-session-enhancements`** — System prompts and responseConstraint for AI sessions
 
 ## Installation (Development)
 
