@@ -533,29 +533,35 @@ function showCompareInput(data) {
     : "";
 
   content.innerHTML = `
-    <div class="cmp-section">
-      <div style="margin-bottom:16px;">
-        <div class="cmp-header-label">Current Snapshot</div>
-        <div class="cmp-header-value">${escapeHtml(displayDate || data.url || "")}</div>
-      </div>
-      <p class="cmp-prompt-text">
-        Tell me what to compare in plain English:
-      </p>
-      <div class="cmp-input-group">
-        <div class="cmp-input-wrap">
-          <input type="text" id="cmp-nl-input" class="cmp-nl-input" autocomplete="off">
-          <div class="cmp-nl-placeholder" id="cmp-nl-placeholder">
-            ${demos.map((d, i) => `
-              <span class="cmp-nl-ph-text ${i === 0 ? 'active' : ''}">${escapeHtml(d)}</span>
-            `).join('')}
-          </div>
+    <div class="cmp-section cmp-input-screen">
+      <div class="cmp-hero">
+        <h1 class="cmp-hero-title">Want to compare?</h1>
+        <p class="cmp-hero-subtitle">See how this snapshot of the page changed over time against any past version.</p>
+        <div class="cmp-snapshot-chip">
+          <span class="cmp-snapshot-chip-label">Current Snapshot</span>
+          <span class="cmp-snapshot-chip-value">${escapeHtml(displayDate || data.url || "")}</span>
         </div>
-        <button id="cmp-submit-btn" class="cmp-submit-btn" aria-label="Submit">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-        </button>
+      </div>
+      <div class="cmp-input-area">
+        <p class="cmp-prompt-text">
+          Tell me what to compare in plain English:
+        </p>
+        <div class="cmp-input-group">
+          <div class="cmp-input-wrap">
+            <input type="text" id="cmp-nl-input" class="cmp-nl-input" autocomplete="off">
+            <div class="cmp-nl-placeholder" id="cmp-nl-placeholder">
+              ${demos.map((d, i) => `
+                <span class="cmp-nl-ph-text ${i === 0 ? 'active' : ''}">${escapeHtml(d)}</span>
+              `).join('')}
+            </div>
+          </div>
+          <button id="cmp-submit-btn" class="cmp-submit-btn" aria-label="Submit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   `;
