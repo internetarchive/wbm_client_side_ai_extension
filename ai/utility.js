@@ -7,6 +7,7 @@ export class AISession {
         this.compareSession = null;
         this.trendSession = null;
         this.compareChatSession = null;
+        this.summaryChatSession = null;
     }
 
     async compareChatInit(sessionKey, context) {
@@ -67,44 +68,113 @@ Rules:
         if (!this.compareChatSession) {
             throw new Error("Chat session not initialized. Call compareChatInit first.");
         }
+        return this.#streamChat(this.compareChatSession, this.compareChatHistory, this.compareChatKey, message, onChunk, signal);
+    }
 
+    async #streamChat(session, history, storageKey, message, onChunk, signal) {
         let fullText = "";
 
         try {
-            const stream = await this.compareChatSession.promptStreaming(message, { signal });
+            const stream = await session.promptStreaming(message, { signal });
 
             for await (const chunk of stream) {
                 fullText += chunk;
                 onChunk(chunk);
             }
 
-            this.compareChatHistory.push(
+            history.push(
                 { role: "user", content: message },
                 { role: "assistant", content: fullText }
             );
 
-            if (this.compareChatKey) {
+            if (storageKey) {
                 await chrome.storage.local.set({
-                    [this.compareChatKey]: { initialPrompts: this.compareChatHistory, timestamp: Date.now() }
+                    [storageKey]: { initialPrompts: history, timestamp: Date.now() }
                 });
             }
 
             return fullText;
         } catch (error) {
             if (fullText) {
-                this.compareChatHistory.push(
+                history.push(
                     { role: "user", content: message },
                     { role: "assistant", content: fullText + " [stopped]" }
                 );
 
-                if (this.compareChatKey) {
+                if (storageKey) {
                     await chrome.storage.local.set({
-                        [this.compareChatKey]: { initialPrompts: this.compareChatHistory, timestamp: Date.now() }
+                        [storageKey]: { initialPrompts: history, timestamp: Date.now() }
                     });
                 }
             }
             throw error;
         }
+    }
+
+    async summaryChatInit(sessionKey, context) {
+        try {
+            const availability = await LanguageModel.availability();
+            if (availability !== "available") {
+                console.warn("Summary chat AI not available:", availability);
+                return false;
+            }
+
+            this.summaryChatKey = sessionKey;
+
+            const stored = await chrome.storage.local.get([sessionKey]);
+            let sessionData = stored[sessionKey];
+
+            if (sessionData && sessionData.initialPrompts) {
+                this.summaryChatSession = await LanguageModel.create(sessionData);
+                this.summaryChatHistory = [...sessionData.initialPrompts];
+                return true;
+            }
+
+            const systemPrompt = `You are a helpful assistant analyzing an archived web page from the Wayback Machine. You have been given specific context about the page - use it to answer the user's questions accurately.
+
+Summary Context:
+- URL: ${context.url}
+${context.ts ? `- Archived on: ${formatDate(context.ts)}` : ""}
+- Page title: ${context.title}
+- AI Summary: ${context.summary}
+${context.insights ? `- Insights:\n${context.insights}` : ""}
+
+Rules:
+- Answer concisely in 2-4 sentences.
+- Base your answers strictly on the context provided above.
+- If asked about something not in the context, say so.
+- Do not make up specific facts or data not present in the context.`;
+
+            const initialPrompts = [{ role: "system", content: systemPrompt }];
+
+            this.summaryChatSession = await LanguageModel.create({
+                expectedOutputLanguages: ["en"],
+                expectedInputs: [{ type: "text" }],
+                initialPrompts
+            });
+
+            this.summaryChatHistory = [...initialPrompts];
+            return true;
+        } catch (error) {
+            console.error("Failed to create summary chat session:", error);
+            return false;
+        }
+    }
+
+    async summaryChatStream(message, onChunk, signal) {
+        if (!this.summaryChatSession) {
+            throw new Error("Chat session not initialized. Call summaryChatInit first.");
+        }
+        return this.#streamChat(this.summaryChatSession, this.summaryChatHistory, this.summaryChatKey, message, onChunk, signal);
+    }
+
+    destroySummaryChat() {
+        if (this.summaryChatSession) {
+            this.summaryChatSession.destroy();
+            this.summaryChatSession = null;
+        }
+        this.summaryChatHistory = null;
+        this.summaryChatKey = null;
     }
 
     destroyCompareChat() {
