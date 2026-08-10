@@ -13,7 +13,8 @@ main
             └── feature/resizable-minimize-overlay   ← Refactored UI + resizable/minimize
                  └── feature/faqs-famous-persons     ← FAQs + famous people insights
                        └── feature/translate-faqs-insights    ← Translation for all outputs
-                            └── feature/accordion-tab-view    ← (current) Accordion + tab UI
+                             └── feature/accordion-tab-view    ← Accordion + tab UI
+                                  └── feature/loading-ui-refinements   ← (current) Spinner/loading polish
 ```
 
 - **`main`** — Initial project setup
@@ -24,6 +25,7 @@ main
 - **`feature/faqs-famous-persons`** — Structured insights (FAQs + famous people) alongside streamed summaries
 - **`feature/translate-faqs-insights`** — Translator API for FAQs, famous people, and summary text
 - **`feature/accordion-tab-view`** — Accordion containers, tab switching, and unified loading states
+- **`feature/loading-ui-refinements`** — Changed the UI to match the wayback machine colour
 
 ## Installation (Development)
 
