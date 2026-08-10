@@ -125,13 +125,20 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
           }
 
           if (insights && (insights.faqs?.length || insights.famousPeople?.length)) {
-            const translatedInsights = targetLanguage && targetLanguage !== "en"
-              ? await aiSession.translateInsights(insights, targetLanguage)
-              : insights;
-            chrome.tabs.sendMessage(tab.id, {
-              type: "STRUCTURED_INSIGHTS",
-              insights: translatedInsights
-            });
+            if (targetLanguage && targetLanguage !== "en") {
+              const translatedInsights = await aiSession.translateInsights(insights, targetLanguage);
+              chrome.tabs.sendMessage(tab.id, {
+                type: "STRUCTURED_INSIGHTS",
+                insights,
+                translatedInsights,
+                targetLanguage
+              });
+            } else {
+              chrome.tabs.sendMessage(tab.id, {
+                type: "STRUCTURED_INSIGHTS",
+                insights
+              });
+            }
           }
         }
       );

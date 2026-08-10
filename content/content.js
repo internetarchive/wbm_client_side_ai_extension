@@ -1,10 +1,12 @@
-let pendingInsights = null;
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const action = request.action;
   if(request.type === "REQUEST_CONTENT") {
     const result = analyzePage(sendResponse);
     return true;
+  }
+
+  else if (request.type === "SHOW_RESULT") {
+    showResultOverlay(request.summary);
   }
 
   else if (request.type === "STREAM_START") {
@@ -21,33 +23,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   else if (request.type === "STREAM_ERROR") {
     if (streamContentElement) {
-      streamContentElement.textContent =
-        `Error: ${request.error}`;
+      streamContentElement.textContent = `Error: ${request.error}`;
     }
-  }
-
-  else if (request.type === "STREAM_END") {
-    showStreamingLoading();
   }
 
   else if (request.type === "TRANSLATED_RESULT") {
-    showOverlay(action, request.summary);
-    if (pendingInsights) {
-      appendInsights(currentContentElement, pendingInsights);
-      pendingInsights = null;
+    const hasTabs = shadowRoot?.querySelector('.wbm-tab-bar');
+    if (hasTabs) {
+      if (request.action === "quality") {
+        populateTab("en", marked.parse(request.originalSummary || request.summary));
+      }
+      populateTab(request.targetLanguage, marked.parse(request.summary));
+    } else {
+      const summaryBody = shadowRoot?.querySelector('.wbm-accordion[data-type="summary"] .wbm-accordion-body');
+      if (summaryBody) {
+        const loading = summaryBody.querySelector('.wbm-loading-container');
+        if (loading) loading.remove();
+        summaryBody.innerHTML = marked.parse(request.summary);
+      }
     }
-  }
-
-  else if (request.type === "TIMING_RESULT") {
-    showOverlay(action, request.summary, request.timings);
+    if (request.action === "quality" && request.timings) {
+      appendQualityTimings(request.timings);
+    }
   }
 
   else if (request.type === "STRUCTURED_INSIGHTS") {
-    if (currentContentElement) {
-      appendInsights(currentContentElement, request.insights);
+    if (request.translatedInsights) {
+      appendInsights("en", request.insights);
+      appendInsights(request.targetLanguage, request.translatedInsights);
     } else {
-      pendingInsights = request.insights;
+      const hasTabs = shadowRoot?.querySelector('.wbm-tab-bar');
+      if (hasTabs) {
+        const activeLang = shadowRoot?.querySelector('.wbm-tab-active')?.dataset.lang;
+        if (activeLang) appendInsights(activeLang, request.insights);
+      } else {
+        appendInsights("en", request.insights);
+      }
     }
   }
-  
+
 });

@@ -371,6 +371,107 @@ const hostStyle = `
         to { transform: rotate(360deg); }
     }
 
+    .wbm-tab-bar {
+        display: flex;
+        gap: 2px;
+        padding: 8px 16px 0;
+        background: rgba(0, 0, 0, 0.02);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .wbm-tab {
+        flex: 1;
+        padding: 6px 12px;
+        border: none;
+        background: transparent;
+        font-size: 12px;
+        font-weight: 600;
+        color: #8e8e93;
+        cursor: pointer;
+        border-radius: 6px 6px 0 0;
+        transition: all 0.2s ease;
+    }
+
+    .wbm-tab:hover {
+        color: #1c1c1e;
+        background: rgba(0, 0, 0, 0.03);
+    }
+
+    .wbm-tab-active {
+        color: #007aff;
+        background: rgba(255, 255, 255, 0.6);
+    }
+
+    .wbm-tab-active:hover {
+        color: #007aff;
+        background: rgba(255, 255, 255, 0.6);
+    }
+
+    .wbm-tab-panel {
+        display: block;
+    }
+
+    .wbm-accordion {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .wbm-accordion:last-child {
+        border-bottom: none;
+    }
+
+    .wbm-accordion-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: #3a3a3c;
+        user-select: none;
+        transition: color 0.2s ease;
+    }
+
+    .wbm-accordion-header:hover {
+        color: #007aff;
+    }
+
+    .wbm-accordion-icon {
+        font-size: 10px;
+        color: #aeaeb2;
+        transition: transform 0.2s ease, color 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .wbm-accordion-header:hover .wbm-accordion-icon {
+        color: #007aff;
+    }
+
+    .wbm-accordion-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .wbm-accordion-body.wbm-accordion-open {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .wbm-accordion-body .wbm-streaming-text {
+        display: block;
+        padding: 0 16px 12px;
+        font-size: 13.5px;
+        line-height: 1.7;
+        color: #1c1c1e;
+    }
+
+    .wbm-loading-container {
+        display: flex;
+        justify-content: center;
+        padding: 20px;
+    }
+
     @media (prefers-color-scheme: dark) {
         #wbm-ai-popup {
             background: rgba(28, 28, 30, 0.72);
@@ -477,6 +578,54 @@ const hostStyle = `
 
         .wbm-loading-overlay {
             background: rgba(0, 0, 0, 0.2);
+        }
+
+        .wbm-tab-bar {
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom-color: rgba(255, 255, 255, 0.07);
+        }
+
+        .wbm-tab {
+            color: #98989d;
+        }
+
+        .wbm-tab:hover {
+            color: #f2f2f7;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .wbm-tab-active {
+            color: #0a84ff;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .wbm-tab-active:hover {
+            color: #0a84ff;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .wbm-accordion {
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .wbm-accordion-header {
+            color: #AEAEB2;
+        }
+
+        .wbm-accordion-header:hover {
+            color: #0a84ff;
+        }
+
+        .wbm-accordion-icon {
+            color: #636366;
+        }
+
+        .wbm-accordion-header:hover .wbm-accordion-icon {
+            color: #0a84ff;
+        }
+
+        .wbm-accordion-body .wbm-streaming-text {
+            color: #e5e5ea;
         }
     }
 `;
