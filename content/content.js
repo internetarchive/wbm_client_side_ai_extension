@@ -3,16 +3,20 @@ let pendingInsights = null;
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const action = request.action;
   if(request.type === "REQUEST_CONTENT") {
-    analyzePage(sendResponse);
+    const result = analyzePage(sendResponse);
     return true;
   }
 
   else if (request.type === "STREAM_START") {
-    createStreamingOverlay(action);
+    createStreamingOverlay(request.action);
   }
 
   else if (request.type === "STREAM_CHUNK") {
     appendStreamChunk(request.chunk);
+  }
+
+  else if (request.type === "STREAM_END") {
+    finishStream();
   }
 
   else if (request.type === "STREAM_ERROR") {

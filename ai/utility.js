@@ -90,13 +90,16 @@ ${pageContent}`;
                     chunk
                 });
             }
-            console.timeEnd(action);
 
             chrome.tabs.sendMessage(tabId, {
                 type: "STREAM_END"
             });
-
+            console.timeEnd(action);
+            
             if (targetLanguage && targetLanguage !== 'en') {
+                chrome.tabs.sendMessage(tabId, {
+                    type: "SHOW_TRANSLATING"
+                })
                 const translated = await this.translateResult(fullText, targetLanguage);
                 return {
                     success: true,
