@@ -183,7 +183,6 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
   _processStepCount = 0;
 
   if (action === "summarize") {
-    chrome.runtime.sendMessage({ type: "CHAT_RESET" });
     const chatKey = `wbm_summary_chat_${location.href}_${targetLanguage || "en"}`;
     chrome.storage.local.get([chatKey], result => {
       const stored = result[chatKey];
@@ -669,8 +668,6 @@ function showCompareOverlay(data) {
   const added = data.stats?.added ?? 0;
   const removed = data.stats?.removed ?? 0;
   const diff = Array.isArray(data.diff) ? data.diff : [];
-
-  chrome.runtime.sendMessage({ type: "CHAT_RESET" });
 
   _currentCompareCtx = {
     titleA: data.titleA || "",

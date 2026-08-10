@@ -65,9 +65,6 @@ After timestamps resolve, both paths share this pipeline:
 - **Changes section** — the diff lines (limited to the first ~200); the diff is shown as `+`/`-` lines, with visual grouping into consecutive change blocks.
 - **Visual Preview** — two iframes (`/web/<ts>/<url>`) so the user can eyeball the actual renders.
 - **Chat** — a conversational assistant scoped to this comparison (see §5).
-- **Compare History** — the popup lists prior comparisons (parsed from `wbm_compare_*` keys); clicking **View** sends a `COMPARE_RESULT` message to the active tab to re-open the overlay.
-
-On entry, a `CHAT_RESET` message destroys any previous compare-chat session.
 
 ---
 
@@ -107,8 +104,7 @@ When the user sends their first message:
 | `COMPARE_PARSE_INPUT` | content → background | Resolve the user query into two timestamps |
 | `COMPARE_LOADING` / `COMPARE_PROGRESS` | background → content | Loading overlay + progress steps |
 | `COMPARE_RESULT` | background → content | Deliver diff, stats, summary (or error) |
-| `CHAT_RESET` | content → background | Destroy previous chat session |
-| `CHAT_QUESTION_START` | content → background | Begin a streamed chat answer |
+| `CHAT_QUESTION_START` | content → background | Begin a streamed chat answer; re-inits the session if the key changed |
 | `CHAT_STREAM_CHUNK` | background → content | Streamed chat chunks |
 | `CHAT_STREAM_END` | background → content | Final chat text (or empty when stopped) |
 | `CHAT_STREAM_ERROR` | background → content | Chat failure |

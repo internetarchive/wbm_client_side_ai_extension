@@ -549,17 +549,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  if (request.type === "CHAT_RESET") {
-    const compareKey = aiSession.compareChatKey;
-    const summaryKey = aiSession.summaryChatKey;
-    aiSession.destroyCompareChat();
-    aiSession.destroySummaryChat();
-    if (compareKey) chrome.storage.local.remove(compareKey);
-    if (summaryKey) chrome.storage.local.remove(summaryKey);
-    sendResponse({});
-    return;
-  }
-
   if (request.type === "CHAT_QUESTION_START") {
     (async () => {
       try {
