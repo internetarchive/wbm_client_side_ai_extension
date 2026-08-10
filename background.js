@@ -103,22 +103,26 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
     `;
           console.log(`Analyzing for action: ${info.menuItemId}`);
 
-          const [analysisResult, insights] = await Promise.all([
-            aiSession.analyzePage(response.content, timingSummary, info.menuItemId, targetLanguage, tab.id),
-            info.menuItemId === "summarize"
-              ? aiSession.getStructuredInsights(response.content)
-              : Promise.resolve({ faqs: [], famousPeople: [] })
-          ]);
+          const result = await aiSession.analyzePage(response.content,timingSummary, info.menuItemId, targetLanguage, tab.id);
+          
+          if(info.menuItemId === "summarize") {
+            chrome.tabs.sendMessage(tab.id, {
+              type: "TRANSLATED_RESULT",
+              action: info.menuItemId,
+              success: Boolean(analysisResult?.success),
+              summary: analysisResult?.summary ?? analysisResult?.error
+            })
+          }
 
-          chrome.tabs.sendMessage(tab.id, {
-            type: "TRANSLATED_RESULT",
-            action: info.menuItemId,
-            success: Boolean(analysisResult?.success),
-            summary: analysisResult?.summary ?? analysisResult?.error,
-            originalSummary: analysisResult?.originalSummary,
-            timings: info.menuItemId === "quality" ? timings : undefined,
-            targetLanguage
-          })
+          else if (info.menuItemId === "quality") {
+            chrome.tabs.sendMessage(tab.id, {
+              type: "TIMING_RESULT",
+              action: info.menuItemId,
+              success: Boolean(analysisResult?.success),
+              summary: analysisResult?.summary ?? analysisResult?.error,
+              timings: timings
+            })
+          }
 
           if (insights && (insights.faqs?.length || insights.famousPeople?.length)) {
             if (targetLanguage && targetLanguage !== "en") {
