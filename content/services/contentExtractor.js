@@ -1,72 +1,63 @@
+/**
+ * Extracts the main content from an archived page using Mozilla's Readability.js
+ * Readability.js is the same library Firefox uses for Reader Mode.
+ * It automatically identifies and extracts the main article content,
+ * filtering out noise like ads, navbars, sidebars and footers.
+ * 
+ * @returns {string} cleaned main content of the page, limited to 4000 chars
+ */
 function extractPageContent() {
-  /*  
-      TODO: Replace manual extraction with Readability.js
-      Current approach is site-specific and doesn't scale
-      Readability.js uses content density scoring like Firefox Reader Mode
-      Demo: https://web.archive.org/web/20260224073754/https://www.wikipedia.org/
-      Extracted content: ` 
-        Wikipedia The Free Encyclopedia
-        Wikipedia 25 years of the free encyclopedia
-        Unlock birthday surprises on Wikipedia
-        Learn how to turn on Birthday mode so you and Baby Globe can explore Wikipedia together!
-        Learn how to turn on Birthday mode so you and Baby Globe can explore Wikipedia together!
-        Search Wikipedia 
-        en
-        Afrikaans
-        Shqip
-        العربية
-        Asturianu
-        Azərbaycanca
-        Български
-        閩南語 / Bân-lâm-gú
-        বাংলা
-        Беларуская
-        Catal�?
-        Čeština
-        Cymraeg
-        Dansk
-        Deutsch
-        Eesti
-        Ελληνικά
-        English
-        Español
-        Esperanto
-        Euskara
-        فارس?� 
-      `
-  */
+  try {
+    const documentClone = document.cloneNode(true);
 
+    const toolbar = documentClone.getElementById("wm-ipp-base");
+    if (toolbar) toolbar.remove();
+
+    const reader = new Readability(documentClone);
+    const article = reader.parse();
+
+    if (article && article.textContent && article.textContent.trim().length > 100) {
+      console.log("Readability extraction successful!");
+      console.log("Extracted title:", article.title);
+      console.log("Content preview:", article.textContent.slice(0, 500));
+      
+      const content = `Title: ${article.title}\n\n${article.textContent}`;
+      return content.trim().slice(0, 4000);
+    }
+
+    console.log("Readability failed, falling back to manual extraction");
+    return fallbackExtraction();
+
+  } catch (error) {
+    console.error("Readability extraction error:", error);
+    return fallbackExtraction();
+  }
+}
+
+/**
+ * Fallback content extraction using manual DOM parsing
+ * Used when Readability.js fails to parse the page
+ * 
+ * @returns {string} extracted text content
+ */
+function fallbackExtraction() {
   const toolbar = document.getElementById("wm-ipp-base");
   if (toolbar) toolbar.remove();
 
-  const noiseSelectors = [
-    "nav", "header", "footer", "aside",
-    "section.sidebar", "section.related",
-    "section.advertisement", "section.newsletter",
-    ".sidebar", ".navigation", ".menu",
-    ".ads", ".advertisement", ".banner",
-    "script", "style", "noscript"
-  ];
-
-  noiseSelectors.forEach(selector => {
-    document.querySelectorAll(selector).forEach(el => el.remove());
-  });
-
-
-  const contentElements = document.querySelectorAll(
-    "article, main, p"
-  );
-  
+  const contentElements = document.querySelectorAll("article, main, p");
   let text = "";
+  
   contentElements.forEach((el) => {
-    text += el.innerText + " ";
+    const cleaned = el.innerText.trim();
+    if (cleaned.length > 50) {
+      text += cleaned + "\n\n";
+    }
   });
 
   if (text.trim().length < 100) {
     text = document.body.innerText;
   }
 
-  console.log("Extracted content preview:", text.slice(0, 500));
-
+  console.log("Fallback content preview:", text.slice(0, 500));
   return text.trim().slice(0, 4000);
 }

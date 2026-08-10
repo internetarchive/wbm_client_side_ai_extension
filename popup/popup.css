@@ -1,0 +1,160 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    border-radius: 2%;
+    width: 280px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    color: #1c1c1e;
+    margin: 0;
+}
+
+.container {
+    padding: 16px;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+}
+
+.header svg {
+    color: #007aff;
+}
+
+.header h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #1c1c1e;
+}
+
+.description {
+    font-size: 12.5px;
+    color: #6e6e73;
+    margin-bottom: 14px;
+    line-height: 1.5;
+}
+
+/* Settings */
+.setting {
+    margin-bottom: 14px;
+}
+
+label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #6e6e73;
+    margin-bottom: 6px;
+}
+
+select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 13.5px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.6);
+    color: #1c1c1e;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+select:focus {
+    outline: none;
+    border-color: #007aff;
+}
+
+/* Button */
+button {
+    width: 100%;
+    padding: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #ffffff;
+    background: #007aff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+    letter-spacing: -0.01em;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+button:active {
+    opacity: 0.7;
+}
+
+#status-message {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #34c759;
+    text-align: center;
+    height: 16px;
+    letter-spacing: -0.01em;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: rgba(28, 28, 30, 0.75);
+        color: #f2f2f7;
+    }
+
+    .header {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .header svg {
+        color: #0a84ff;
+    }
+
+    .header h1 {
+        color: #f2f2f7;
+    }
+
+    .description {
+        color: #aeaeb2;
+    }
+
+    label {
+        color: #aeaeb2;
+    }
+
+    select {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #f2f2f7;
+    }
+
+    button {
+        background: #0a84ff;
+    }
+
+    #status-message {
+        color: #30d158;
+    }
+}
