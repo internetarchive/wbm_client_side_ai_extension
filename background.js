@@ -88,9 +88,26 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "summarize" || info.menuItemId === "quality") {
     chrome.storage.sync.get(['targetLanguage'], async (result) => {
       const targetLanguage = result.targetLanguage || 'en';
+
+      chrome.tabs.sendMessage(tab.id, {
+        type: "STREAM_START",
+        action: info.menuItemId,
+        targetLanguage
+      });
+
+      let screenshotBlob, screenshotDataUrl;
+      if (info.menuItemId === "quality") {
+        try {
+          screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
+          screenshotBlob = await fetch(screenshotDataUrl).then(r => r.blob());
+        } catch (e) {
+          console.log("Screenshot capture failed, proceeding without it:", e);
+        }
+      }
+
       chrome.tabs.sendMessage(
-        tab.id, 
-        { type: "REQUEST_CONTENT", action: info.menuItemId }, 
+        tab.id,
+        { type: "REQUEST_CONTENT", action: info.menuItemId },
         async (response) => {
           if (!response || !response.content) return;
 

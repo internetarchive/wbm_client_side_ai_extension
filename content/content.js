@@ -45,6 +45,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "quality" && request.timings) {
       appendQualityTimings(request.timings);
     }
+    if (request.screenshot) {
+      setScreenshot(request.screenshot);
+    }
   }
 
   else if (request.type === "STRUCTURED_INSIGHTS") {

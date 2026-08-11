@@ -8,26 +8,20 @@ export class AISession {
             const availability = await LanguageModel.availability();
             console.log("AI availability:", availability);
             if(availability === "available") {
-                [this.session, this.insightSession] = await Promise.all([
-                    LanguageModel.create({
-                        expectedOutputLanguages: ["en"],
-                        initialPrompts: [
-                            {
-                                role: "system",
-                                content: "You are a helpful assistant that analyzes archived web pages from the Wayback Machine. Provide concise, accurate summaries and quality assessments based on what the prompt of the user is asking."
-                            }
-                        ]
-                    }),
-                    LanguageModel.create({
-                        expectedOutputLanguages: ["en"],
-                        initialPrompts: [
-                            {
-                                role: "system",
-                                content: "You are a structured data extraction assistant. Always respond with valid JSON in the exact schema requested. Do not include markdown, code fences, or explanations outside the JSON."
-                            }
-                        ]
-                    })
-                ]);
+                this.session = await LanguageModel.create({
+                    expectedOutputLanguages: ["en"],
+                    expectedInputs: [
+                        { type: "text" },
+                        { type: "image" }
+                    ],
+                    initialPrompts: [
+                        {
+                            role: "system",
+                            content: "You are an assistant that analyzes archived web pages from the Wayback Machine. You may receive page text, load-timing data, and occasionally a screenshot. Base your answers only on what's given — don't guess at details that aren't present."
+                        }
+                    ]
+                });
+                this.insightSession = await this.session.clone();
                 console.log("AI sessions created successfully!");
             }
             else {
@@ -90,11 +84,24 @@ ${pageContent}`;
         }
     }
 
-    async analyzePage(pageContent,  timingSummary, action, targetLanguage, tabId) {
+    async analyzePage(pageContent, timingSummary, action, targetLanguage, tabId, screenshotBlob) {
         try {
             if (!this.session) {
                 await this.init();
             }
+
+            const worker = await this.session.clone();
+
+            if (action === "quality" && screenshotBlob) {
+                await worker.append({
+                    role: "user",
+                    content: [
+                        { type: "image", value: screenshotBlob },
+                        { type: "text", value: "This is a screenshot of the archived web page. Use it alongside the page text to assess visual quality and completeness." }
+                    ]
+                });
+            }
+
             let prompt;
 
             console.log(targetLanguage);
@@ -103,16 +110,43 @@ ${pageContent}`;
                 prompt = `Summarize this archived web page in 2-3 sentences:
                     ${pageContent}`;
             } else if(action === "quality") {
-                prompt = `Analyze this archived web page and determine: 1) Is this a real page or a soft-404 error page? 2) Does the content seem complete or broken? Answer in 2-3 sentences: ${pageContent} \n\nLoad Stats:\n ${timingSummary}`;
+                prompt = `Analyze this archived web page using the page content, load timing stats${screenshotBlob ? ", and the attached screenshot" : ""}. Answer each question in 1-2 concise sentences.
+
+1) Is this a real page or a soft-404 error page? Look for signs like very short/generic content, "not found" style messaging, or an empty body.
+2) Does the content look complete, or truncated/broken?${screenshotBlob ? "\n3) Does the screenshot show a properly rendered page, or something broken/blank?" : ""}
+
+Page content:
+${pageContent}
+
+Load Stats:
+${timingSummary}`;
             } 
             console.time(action);
-            const stream = await this.session.promptStreaming(prompt);
 
-            chrome.tabs.sendMessage(tabId, {
-                type: "STREAM_START",
-                action,
-                targetLanguage
-            });
+            const qualitySchema = {
+                type: "object",
+                properties: {
+                    analysis: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                question: { type: "string" },
+                                answer: { type: "string" }
+                            },
+                            required: ["question", "answer"],
+                            additionalProperties: false
+                        },
+                        minItems: 1,
+                        maxItems: 3
+                    }
+                },
+                required: ["analysis"],
+                additionalProperties: false
+            };
+
+            const streamOptions = action === "quality" ? { responseConstraint: qualitySchema } : {};
+            const stream = await worker.promptStreaming(prompt, streamOptions);
 
             let fullText = "";
 
