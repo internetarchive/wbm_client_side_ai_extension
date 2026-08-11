@@ -131,9 +131,16 @@ ${pageContent}`;
             if (action === "quality" && screenshotBlob) {
                 const textPrompt = `Analyze this archived web page using the load timing stats and the attached screenshot. Answer each question in 1-2 concise sentences.
 
-1) Is this page showing an error? (real error page, soft-404, or normal). Look for signs like very short/generic content, "not found" style messaging, or an empty body.
-2) Does the content look complete, or truncated/broken?
-3) Does the screenshot show a properly rendered page, or something broken/blank?
+            // Truncate page content to fit remaining context window
+            const remaining = worker.contextWindow - worker.contextUsage;
+            const promptOverhead = 400; // buffer for prompt text + timing stats + response
+            const available = Math.max(remaining - promptOverhead, 100);
+            const charBudget = available * 4; // ~4 chars per token
+            if (pageContent.length > charBudget) {
+              pageContent = pageContent.slice(0, charBudget);
+            }
+
+            let prompt;
 
 Load Stats:
 ${timingSummary}`;
@@ -168,27 +175,15 @@ ${timingSummary}`;
                 });
             }
 
-            if (action === "quality") {
-                try {
-                    const parsed = JSON.parse(fullText);
-                    if (parsed.analysis && Array.isArray(parsed.analysis)) {
-                        fullText = parsed.analysis.map(item => {
-                            const q = item.question.toLowerCase();
-                            let icon = '📋';
-                            if (q.includes('error') || q.includes('real page')) icon = '🛑';
-                            else if (q.includes('content') || q.includes('complete') || q.includes('truncated')) icon = '📄';
-                            else if (q.includes('screenshot') || q.includes('render')) icon = '🖼️';
-                            return `**${icon} ${item.question}**\n\n${item.answer}`;
-                        }).join('\n\n');
-                    }
-                } catch (e) {
-                    console.error("Failed to parse quality JSON:", e);
-                }
-            }
-
+            chrome.tabs.sendMessage(tabId, {
+                type: "STREAM_END"
+            });
             console.timeEnd(action);
-
-            if (action !== "quality" && targetLanguage && targetLanguage !== 'en') {
+            
+            if (targetLanguage && targetLanguage !== 'en') {
+                chrome.tabs.sendMessage(tabId, {
+                    type: "SHOW_TRANSLATING"
+                })
                 const translated = await this.translateResult(fullText, targetLanguage);
                 return {
                     success: true,
