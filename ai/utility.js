@@ -3,6 +3,7 @@ export class AISession {
         this.session = null;
         this.insightSession = null;
         this.compareSession = null;
+        this.trendSession = null;
     }
 
     async CompareSessionInit() {
@@ -80,6 +81,71 @@ export class AISession {
         } catch ( error ) {
             console.error("Failed to create AI sessions:", error);
         } 
+    }
+
+    async TrendSessionInit() {
+        try {
+            const availability = await LanguageModel.availability();
+            
+            if (availability === "available") {
+                this.trendSession = await LanguageModel.create({
+                    expectedOutputLanguages: ["en"],
+                    expectedInputs: [{ type: "text" }],
+                    initialPrompts: [
+                        {
+                            role: "system",
+                            content: `You are an expert data analyst for a Wayback Machine extension. Your ONLY job is to analyze historical word count data and output ONE OR TWO short, punchy sentence(s) summarizing the growth, decline, or volatility trend of the website.
+                            
+CRITICAL INSTRUCTIONS:
+- Write SHORT and TO THE POINT summary.
+- Do not use prefatory phrases (e.g., "The data shows," "Here is the summary," "Based on").
+- Keep it under 40 words.
+- Try to make the response INTERESTING by including some TRIVIA from the input, DON'T GUESS ON YOUR OWN!
+- Focus on the overall trajectory (e.g., steady growth, massive purge, stable).
+
+EXAMPLES:
+User: "2010: 450 words, 2012: 1200 words, 2015: 300 words" 
+Output: The site saw massive content expansion in 2012 before being heavily streamlined in 2015.
+
+User: "2020: 100 words, 2021: 105 words, 2022: 110 words" 
+Output: The website's content volume has remained exceptionally stable with negligible growth.`
+                        }
+                    ]
+                });
+                console.log("Trend AI session created successfully!");
+                return this.trendSession;
+            }
+            return null;
+        } catch (error) {
+            console.error("Failed to create Trend AI session:", error);
+            return null;
+        }
+    }
+
+    async getTrendInsight(trendDataString) {
+        try {
+            if (!this.trendSession) {
+                await this.TrendSessionInit();
+            }
+
+            if (!this.trendSession) {
+                console.warn("Trend session is unavailable.");
+                return "Trend analysis is currently unavailable."; 
+            }
+
+            const promptText = `Analyze this website's historical word count data: ${trendDataString}`;
+            console.log("Sending to Trend AI:", promptText);
+
+            const rawResponse = await this.trendSession.prompt(promptText);
+            
+            const cleanResponse = rawResponse.replace(/^["']|["']$/g, '').trim();
+            
+            return cleanResponse;
+
+        } catch (error) {
+            console.error("Error generating trend insight from AI:", error);
+            return "Trend analysis could not be generated at this time.";
+        }
     }
 
     async getStructuredInsights(pageContent) {

@@ -127,7 +127,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   else if (request.type === "COMPARE_RESULT") {
     try {
-      if (request.tsA && request.url) {
+      if (request.tsA && request.url && request.tsA !== "live") {
         _currentSnapshotRef = { ts: request.tsA, url: request.url };
       }
       showCompareOverlay(request);

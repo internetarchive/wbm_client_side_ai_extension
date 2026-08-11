@@ -101,6 +101,18 @@ export class cdxBase {
     return Object.entries(years).map(([year, months]) => ({ year: parseInt(year), months }));
   }
 
+  async getYearlySnapshots(url) {
+    const apiUrl = this.#buildCDXUrl(url, {
+      fl: "timestamp,statuscode",
+      collapse: "timestamp:4",
+      limit: -20
+    });
+    const data = await this.#cdxFetch(apiUrl);
+    if (!data || data.length < 2) return [];
+
+    return data.slice(1).map(([ts, status]) => ({ year: parseInt(ts.substring(0, 4), 10), ts, status: status || "-" }))
+  }
+
   async getSnapshotStatus_quality(playbackUrl) {
     const urlData = parsePlaybackUrl(playbackUrl);
     if(!urlData) return { status: "unavailable", codes: [] };

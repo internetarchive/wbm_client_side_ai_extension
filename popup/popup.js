@@ -1,10 +1,13 @@
 import { cdxBase } from "../api/cdx.js";
+import { AISession } from "../ai/utility.js";
 import { isPlaybackPage, formatDate, parsePlaybackUrl } from "../utils/helpers.js";
 
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 const CACHE_PREFIX_HEALTH = "wbm_health_";
 const CACHE_PREFIX_TIMELINE = "wbm_timeline_";
+const CACHE_PREFIX_TREND = "wbm_popup_trend_";
 const cdx = new cdxBase();
+const ai = new AISession();
 
 document.addEventListener("DOMContentLoaded", () => {
   const languageSelect = document.getElementById("language-select");
@@ -94,17 +97,39 @@ async function loadPageHealth(forceRefresh = false) {
     const cdxUrl = isPlayback ? parsePlaybackUrl(url).url : url;
 
     if (!isPlayback) {
-      const avail = await cdx.getAvailability_CDX(url);
-      if (avail) {
-        const linkUrl = avail.url || `https://web.archive.org/web/${avail.timestamp}/${url}`;
-        healthBody.innerHTML = `
-          <div class="health-headline">Archived on <strong>${formatDate(avail.timestamp)}</strong></div>
-          <div class="health-note">This page has a saved copy. Open it in the Wayback Machine to analyze.</div>
-          <a class="health-link" href="${linkUrl}" target="_blank">View archived version →</a>
-        `;
-      } else {
+      const latestTs = await cdx.getLastCapture(url);
+      if (!latestTs) {
         healthBody.innerHTML = `<div class="health-empty">⛅ No archived version found for this page</div>`;
+        return;
       }
+
+      healthBody.innerHTML = `
+        <div class="trend-chart-wrapper" id="trend-wrapper">
+          <div class="trend-chart-header">Page Length Over Time</div>
+          <div class="trend-canvas-wrap">
+            <canvas id="trend-canvas"></canvas>
+          </div>
+          <div class="trend-info" id="trend-info">Loading evolution data...</div>
+        </div>
+        <div class="live-compare-prompt">
+          <div class="live-compare-text">Want to see a specific comparison?</div>
+          <button class="live-compare-btn" data-url="${escapeAttr(url)}" data-ts="${latestTs}">Compare with latest archive →</button>
+        </div>
+      `;
+
+      const btn = healthBody.querySelector(".live-compare-btn");
+      if (btn) {
+        btn.addEventListener("click", () => {
+          chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+            if (tab) {
+              chrome.runtime.sendMessage({ type: "PERFORM_ACTION", action: "live-compare", tabId: tab.id }, () => {
+                window.close();
+              });
+            }
+          });
+        });
+      }
+      loadTrendChart(url);
       return;
     }
 
@@ -134,12 +159,12 @@ async function loadPageHealth(forceRefresh = false) {
 
 function renderHealthBody(container, health, cdxUrl, fromCache) {
   if (!health || health.total === 0) {
-    container.innerHTML = `<div class="health-empty">No snapshot data available</div>`;
+    container.innerHTML = `<div class="health-empty">No capture data available</div>`;
     return;
   }
 
   const truncNote = health.isTruncated
-    ? `<div class="health-note">Showing stats for the ${health.total.toLocaleString()} snapshot days (truncated)</div>`
+    ? `<div class="health-note">Showing stats for the ${health.total.toLocaleString()} capture days (truncated)</div>`
     : "";
 
   const cacheNote = fromCache
@@ -169,7 +194,7 @@ function renderHealthBody(container, health, cdxUrl, fromCache) {
 
   container.innerHTML = `
     <div class="health-stats">
-      <div class="health-headline">${health.totalLabel} snapshot day${health.total !== 1 ? "s" : ""}${health.firstArchived ? ` since <strong>${health.firstArchived}</strong>` : ""}</div>
+      <div class="health-headline">${health.totalLabel} capture day${health.total !== 1 ? "s" : ""}${health.firstArchived ? ` since <strong>${health.firstArchived}</strong>` : ""}</div>
       <div class="health-meta">Last archived: ${health.lastArchived || "Unknown"}</div>
       ${truncNote}
       ${statusHtml}
@@ -218,7 +243,7 @@ async function showTimeline(cdxUrl) {
   }
 
   stats.style.display = "none";
-  title.textContent = "📅 Snapshot Timeline";
+  title.textContent = "📅 Capture Timeline";
   container.style.display = "block";
   container.innerHTML = `<div class="health-loading">Loading timeline...</div>`;
 
@@ -335,7 +360,7 @@ function showHistory() {
   if (!stats || !container || !title) return;
 
   stats.style.display = "block";
-  title.textContent = "Snapshot History";
+  title.textContent = "Capture History";
   container.style.display = "none";
 }
 
@@ -364,12 +389,12 @@ async function loadCompareHistory() {
     const added = entry.stats?.added ?? 0;
     const removed = entry.stats?.removed ?? 0;
 
-    const keyMatch = key.match(/^wbm_compare_(.*)_(\d{14})_(\d{14})$/);
+    const keyMatch = key.match(/^wbm_compare_(.*)_(\d{14}|\w+)_(\d{14}|\w+)$/);
     const url = keyMatch ? keyMatch[1] : key.replace(/^wbm_compare_/, "");
     const tsA = keyMatch ? keyMatch[2] : "";
     const tsB = keyMatch ? keyMatch[3] : "";
-    const dateLabelA = formatDate(tsA);
-    const dateLabelB = formatDate(tsB);
+    const dateLabelA = tsA === "live" ? "Live" : formatDate(tsA);
+    const dateLabelB = tsB === "live" ? "Live" : formatDate(tsB);
 
     html += `
       <div class="history-item" data-key="${escapeHtml(key)}">
@@ -402,7 +427,7 @@ async function loadCompareHistory() {
 }
 
 function viewCompare(key, entry) {
-  const keyMatch = key.match(/^wbm_compare_(.*)_(\d{14})_(\d{14})$/);
+  const keyMatch = key.match(/^wbm_compare_(.*)_(\d{14}|\w+)_(\d{14}|\w+)$/);
   if (!keyMatch) return;
   const url = keyMatch[1];
   const tsA = keyMatch[2];
@@ -413,8 +438,8 @@ function viewCompare(key, entry) {
     chrome.tabs.sendMessage(tab.id, {
       type: "COMPARE_RESULT",
       success: true,
-      titleA: entry.titleA || formatDate(tsA),
-      titleB: entry.titleB || formatDate(tsB),
+      titleA: entry.titleA || (tsA === "live" ? "Live" : formatDate(tsA)),
+      titleB: entry.titleB || (tsB === "live" ? "Live" : formatDate(tsB)),
       tsA, tsB, url,
       diff: entry.diff || [],
       stats: entry.stats || { added: 0, removed: 0 },
@@ -429,4 +454,153 @@ function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function extractCleanText(htmlString) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, 'text/html');
+  return doc.body ? doc.body.textContent.trim().replace(/\s+/g, ' ') : '';
+}
+
+async function loadTrendChart(url) {
+  const canvas = document.getElementById("trend-canvas");
+  const info = document.getElementById("trend-info");
+  if (!canvas || !info) return;
+
+  const cacheKey = CACHE_PREFIX_TREND + url;
+  const cached = await chrome.storage.local.get([cacheKey]);
+  const cachedEntry = cached[cacheKey];
+  let points = cachedEntry ? cachedEntry.points : null;
+
+  if (points) {
+    drawTrendChart(canvas, points.map(p => ({ ...p, textLength: p.wordCount })));
+    info.textContent = "Analyzing trend...";
+  } else {
+    try {
+      const snapshots = await cdx.getYearlySnapshots(url);
+      if (!snapshots || snapshots.length < 2) {
+        info.textContent = "Not enough historical data for a trend chart";
+        return;
+      }
+
+      points = [];
+      const recent = snapshots.slice(-8);
+
+      for (const s of recent) {
+        info.textContent = `Loading ${s.year}...`;
+        try {
+          const resp = await fetch(`https://web.archive.org/web/${s.ts}id_/${url}`);
+          const html = await resp.text();
+          const text = extractCleanText(html);
+          points.push({ year: s.year, wordCount: text.split(' ').length });
+        } catch {
+          points.push({ year: s.year, wordCount: 0 });
+        }
+      }
+
+      await chrome.storage.local.set({ [cacheKey]: { points, timestamp: Date.now() } });
+      drawTrendChart(canvas, points.map(p => ({ ...p, textLength: p.wordCount })));
+      info.textContent = "Analyzing trend...";
+    } catch (e) {
+      info.textContent = "Could not load evolution data";
+      console.error("Trend chart error:", e);
+      return;
+    }
+  }
+
+  try {
+    const trendDataString = points.map(p => `${p.year}:${p.wordCount} words`).join(', ');
+    const aiInsight = await ai.getTrendInsight(trendDataString);
+    info.innerHTML = `<strong>AI Insight:</strong> ${aiInsight}`;
+
+  } catch (e) {
+    info.textContent = "Could not load evolution data";
+    console.error("Trend chart error:", e);
+  }
+}
+
+function drawTrendChart(canvas, points) {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  const W = rect.width;
+  const H = rect.height;
+  
+  const pad = { top: 16, bottom: 20, left: 20, right: 35 }; 
+  
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const valid = points.filter(p => p.textLength > 0);
+  if (valid.length < 2) {
+    ctx.fillStyle = "#999";
+    ctx.font = "11px -apple-system, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Insufficient data for chart", W / 2, H / 2 + 4);
+    return;
+  }
+
+  const maxVal = Math.max(...valid.map(p => p.textLength));
+  const minVal = Math.min(...valid.map(p => p.textLength));
+  const range = maxVal - minVal || 1;
+  const years = valid.map(p => p.year);
+
+  const xStep = chartW / (valid.length - 1);
+
+  const toX = i => pad.left + i * xStep;
+  const toY = v => pad.top + chartH - ((v - minVal) / range) * chartH * 0.85;
+
+  ctx.strokeStyle = "#AB2D33";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  valid.forEach((p, i) => {
+    const x = toX(i), y = toY(p.textLength);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  valid.forEach((p, i) => {
+    const x = toX(i), y = toY(p.textLength);
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2); 
+    ctx.fillStyle = i === valid.length - 1 ? "#D0021B" : "#AB2D33";
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = "#888";
+  ctx.font = "600 10px -apple-system, system-ui, sans-serif"; 
+  ctx.textAlign = "center";
+  const labelStep = Math.max(1, Math.floor(valid.length / 5));
+  valid.forEach((p, i) => {
+    if (i % labelStep === 0 || i === valid.length - 1) {
+      ctx.fillText(p.year, toX(i), H - 4);
+    }
+  });
+
+  ctx.fillStyle = "#999";
+  ctx.font = "600 9px -apple-system, system-ui, sans-serif";
+  ctx.textAlign = "left"; 
+  
+  ctx.fillText(formatSize(maxVal), pad.left + chartW + 6, toY(maxVal) + 3);
+  ctx.fillText(formatSize(minVal), pad.left + chartW + 6, toY(minVal) + 3);
+}
+
+function formatSize(n) {
+  if (n >= 10000) return (n / 1000).toFixed(1) + "k";
+  return String(n);
 }
