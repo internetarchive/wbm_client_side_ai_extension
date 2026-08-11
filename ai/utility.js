@@ -152,7 +152,7 @@ ${timingSummary}`;
             } else if (action === "quality") {
                 promptInput = `Analyze this archived web page using the load timing stats. Answer each question in 1-2 concise sentences.
 
-1) Is this a real page or a soft-404 error page? Look for signs like very short/generic content, "not found" style messaging, or an empty body.
+1) Is this page showing an error? (real error page, soft-404, or normal). Look for signs like very short/generic content, "not found" style messaging, or an empty body.
 2) Does the content look complete, or truncated/broken?
 
 Load Stats:
@@ -197,7 +197,7 @@ ${timingSummary}`;
                 originalSummary: fullText
             };
         } catch (error) {
-            if(targetLanguage && targetLanguage !== 'en') {
+            if (action !== "quality" && targetLanguage && targetLanguage !== 'en') {
                 const translatedError = await this.translateResult(error.message, targetLanguage);
                 chrome.tabs.sendMessage(tabId,{
                     type:"STREAM_ERROR",

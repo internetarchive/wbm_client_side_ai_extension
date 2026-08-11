@@ -30,6 +30,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (streamContentElement) {
       streamContentElement.textContent = `Error: ${request.error}`;
     }
+    if (typeof addProcessStep === "function") {
+      addProcessStep(`Error: ${request.error}`, "error");
+    }
   }
 
   else if (request.type === "TRANSLATED_RESULT") {
@@ -46,8 +49,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         summaryBody.innerHTML = marked.parse(request.summary);
       }
     }
+    if (typeof addProcessStep === "function") {
+      if (streamedText.length === 0) {
+        addProcessStep(`Loaded from cache`, "done");
+      } else {
+        addProcessStep("Analysis complete", "done");
+      }
+    }
     if (request.action === "quality" && request.timings) {
       appendQualityTimings(request.timings);
+      if (typeof addProcessStep === "function") {
+        const total = request.timings.totalResources;
+        const blocking = request.timings.renderBlockingCount;
+        addProcessStep(`Page audit: ${total} resources (${blocking} render-blocking)`, "done");
+      }
     }
     if (request.screenshot) {
       setScreenshot(request.screenshot);
@@ -66,6 +81,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (activeLang) appendInsights(activeLang, request.insights);
       } else {
         appendInsights("en", request.insights);
+      }
+    }
+    if (typeof addProcessStep === "function") {
+      const faqCount = request.insights?.faqs?.length || 0;
+      const peopleCount = request.insights?.famousPeople?.length || 0;
+      const parts = [];
+      if (faqCount) parts.push(`${faqCount} FAQs`);
+      if (peopleCount) parts.push(`${peopleCount} notable personalities`);
+      if (parts.length) {
+        addProcessStep(`Extracted ${parts.join(" and ")}`, "done");
+      } else {
+        addProcessStep("Insights generated", "done");
       }
     }
     if (_pendingInsightsLang) {
@@ -90,6 +117,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     if (request.translatedInsights) {
       appendInsights(targetLang, request.translatedInsights);
+    }
+    if (typeof addProcessStep === "function") {
+      const langName = getLanguageDisplayName(targetLang);
+      const hadInsights = request.translatedInsights?.faqs?.length || request.translatedInsights?.famousPeople?.length;
+      addProcessStep(`Translated to ${langName} (summary${hadInsights ? " + insights" : ""})`, "done");
     }
   }
 

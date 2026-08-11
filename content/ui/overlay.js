@@ -1,5 +1,6 @@
 let streamContentElement = null;
 let streamedText = "";
+let _processStepCount = 0;
 
 function showResultOverlay(summary) {
   const shadow = createShadowHost();
@@ -17,28 +18,30 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
 
   const hasTabs = targetLanguage && targetLanguage !== "en";
   const langLabel = hasTabs ? getLanguageDisplayName(targetLanguage) : "";
+  const summaryLabel = action === "quality" ? "Page Quality" : "Summary";
 
   let html = "";
 
+  html += `<div class="wbm-tab-bar">`;
+  html += `<button class="wbm-tab wbm-tab-active" data-lang="en">${summaryLabel}</button>`;
   if (hasTabs) {
-    html += `<div class="wbm-tab-bar">`;
-    html += `<button class="wbm-tab wbm-tab-active" data-lang="en">English</button>`;
     html += `<button class="wbm-tab wbm-lang-tab" data-lang="${targetLanguage}">${langLabel}</button>`;
     html += `<select class="wbm-lang-select" aria-label="Change language">`;
     LANGUAGES.forEach(l => {
       html += `<option value="${l.code}"${l.code === targetLanguage ? ' selected' : ''}>${l.name}</option>`;
     });
     html += `</select>`;
-    html += `</div>`;
   }
+  html += `<button class="wbm-tab" data-lang="process">Process</button>`;
+  html += `</div>`;
 
   html += `<div class="wbm-tab-panel" data-lang="en">`;
   html +=   `<div class="wbm-accordion" data-type="summary">`;
   html +=     `<div class="wbm-accordion-header" role="button" tabindex="0">`;
   html +=       `<span class="wbm-accordion-icon">▶</span>`;
-  html +=       `<span>View Streaming</span>`;
+  html +=       `<span>${summaryLabel}</span>`;
   html +=     `</div>`;
-  html +=     `<div class="wbm-accordion-body wbm-accordion-open"><span class="wbm-streaming-text"><div class="wbm-loading-container"><div class="wbm-spinner"></div></div></span></div>`;
+  html +=     `<div class="wbm-accordion-body wbm-accordion-open"><div class="wbm-loading-container"><div class="wbm-spinner"></div></div></div>`;
   html +=   `</div>`;
 
   if (showInsights) {
@@ -68,7 +71,7 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
     html +=   `<div class="wbm-accordion" data-type="summary">`;
     html +=     `<div class="wbm-accordion-header" role="button" tabindex="0">`;
     html +=       `<span class="wbm-accordion-icon">▶</span>`;
-    html +=       `<span>View Streaming</span>`;
+    html +=       `<span>${summaryLabel}</span>`;
     html +=     `</div>`;
     html +=     `<div class="wbm-accordion-body wbm-accordion-open"><div class="wbm-loading-container"><div class="wbm-spinner"></div></div></div>`;
     html +=   `</div>`;
@@ -93,6 +96,21 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
     html += `</div>`;
   }
 
+  html += `<div class="wbm-tab-panel" data-lang="process" style="display:none;">`;
+  html +=   `<div class="wbm-process-log">`;
+  html +=     `<div class="wbm-process-steps">`;
+  html +=       `<div class="wbm-step wbm-step-active">`;
+  html +=         `<span class="wbm-step-indicator">→</span>`;
+  html +=         `<span class="wbm-step-text">Initiating ${action} analysis...</span>`;
+  html +=       `</div>`;
+  html +=     `</div>`;
+  html +=     `<div class="wbm-process-output" style="display:none;">`;
+  html +=       `<div class="wbm-process-output-label">Raw Output</div>`;
+  html +=       `<div class="wbm-stream-text"></div>`;
+  html +=     `</div>`;
+  html +=   `</div>`;
+  html += `</div>`;
+
   content.innerHTML = html;
   shadow.appendChild(popup);
 
@@ -108,18 +126,20 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
     });
   });
 
-  if (hasTabs) {
-    content.querySelectorAll('.wbm-tab, .wbm-lang-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const lang = tab.dataset.lang;
-        content.querySelectorAll('.wbm-tab, .wbm-lang-tab').forEach(t => t.classList.remove('wbm-tab-active'));
-        tab.classList.add('wbm-tab-active');
-        content.querySelectorAll('.wbm-tab-panel').forEach(p => p.style.display = 'none');
-        const panel = content.querySelector(`.wbm-tab-panel[data-lang="${lang}"]`);
-        if (panel) panel.style.display = 'block';
-        requestAnimationFrame(() => updateTooltipAlignment());
-      });
+  const allTabs = content.querySelectorAll('.wbm-tab');
+  allTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const lang = tab.dataset.lang;
+      allTabs.forEach(t => t.classList.remove('wbm-tab-active'));
+      tab.classList.add('wbm-tab-active');
+      content.querySelectorAll('.wbm-tab-panel').forEach(p => p.style.display = 'none');
+      const panel = content.querySelector(`.wbm-tab-panel[data-lang="${lang}"]`);
+      if (panel) panel.style.display = 'block';
+      requestAnimationFrame(() => updateTooltipAlignment());
     });
+  });
+
+  if (hasTabs) {
     content.querySelector('.wbm-lang-select').addEventListener('change', function() {
       const newLang = this.value;
       const langTab = content.querySelector('.wbm-lang-tab');
@@ -134,11 +154,43 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
     });
   }
 
-  const enPanel = content.querySelector('.wbm-tab-panel[data-lang="en"]');
-  streamContentElement = enPanel.querySelector('.wbm-accordion[data-type="summary"] .wbm-streaming-text');
+  const processPanel = content.querySelector('.wbm-tab-panel[data-lang="process"]');
+  streamContentElement = processPanel.querySelector('.wbm-stream-text');
   streamedText = "";
+  _processStepCount = 0;
 
   return content;
+}
+
+function addProcessStep(text, status) {
+  const stepClass = status === "done" ? "wbm-step-done" :
+                    status === "error" ? "wbm-step-error" :
+                    "wbm-step-active";
+  const indicator = status === "done" ? "✓" :
+                    status === "error" ? "✗" :
+                    "→";
+
+  const stepsContainer = shadowRoot?.querySelector('.wbm-process-steps');
+  if (!stepsContainer) return;
+
+  if (_processStepCount > 0) {
+    const prev = stepsContainer.querySelector('.wbm-step-active');
+    if (prev) {
+      prev.className = 'wbm-step wbm-step-done';
+      prev.querySelector('.wbm-step-indicator').textContent = '✓';
+    }
+  }
+
+  stepsContainer.insertAdjacentHTML('beforeend',
+    `<div class="wbm-step ${stepClass}">
+      <span class="wbm-step-indicator">${indicator}</span>
+      <span class="wbm-step-text">${text}</span>
+    </div>`
+  );
+  _processStepCount++;
+
+  const log = shadowRoot?.querySelector('.wbm-process-log');
+  if (log) log.scrollTop = log.scrollHeight;
 }
 
 function appendQualityTimings(timings) {
@@ -158,7 +210,9 @@ function appendQualityTimings(timings) {
 function appendStreamChunk(chunk) {
   if (!streamContentElement) return;
   if (streamedText.length === 0) {
-    streamContentElement.innerHTML = "";
+    const output = shadowRoot?.querySelector('.wbm-process-output');
+    if (output) output.style.display = 'block';
+    addProcessStep("Receiving AI response stream...", "active");
   }
 
   else {
@@ -166,6 +220,8 @@ function appendStreamChunk(chunk) {
   }
 
   streamContentElement.append(chunk);
+  const log = shadowRoot?.querySelector('.wbm-process-log');
+  if (log) log.scrollTop = log.scrollHeight;
 }
 
 function populateTab(tabLang, summaryHtml) {

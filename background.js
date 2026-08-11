@@ -51,7 +51,7 @@ async function checkAIAvailability() {
 }
 
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+async function handleAction(action, tab) {
   if(!isPlaybackPage(tab.url)) {
     console.log("It is not a playback page!");
     chrome.tabs.sendMessage(
@@ -88,143 +88,154 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  if (info.menuItemId === "summarize" || info.menuItemId === "quality") {
-    chrome.storage.sync.get(['targetLanguage'], async (result) => {
-      const targetLanguage = result.targetLanguage || 'en';
+  chrome.storage.sync.get(['targetLanguage'], async (result) => {
+    const targetLanguage = action === "quality" ? "en" : (result.targetLanguage || 'en');
 
-      if (info.menuItemId === "summarize") {
-        const cacheKey = `wbm_summarize_${tab.url}_${targetLanguage}`;
-        const cachedData = await chrome.storage.local.get([cacheKey]);
+    if (action === "summarize") {
+      const cacheKey = `wbm_summarize_${tab.url}_${targetLanguage}`;
+      const cachedData = await chrome.storage.local.get([cacheKey]);
 
-        if (cachedData[cacheKey]) {
-          console.log(`[Cache] HIT for ${cacheKey}. Serving instantly.`);
-          const { timestamp, ...cachedPayload } = cachedData[cacheKey];
+      if (cachedData[cacheKey]) {
+        console.log(`[Cache] HIT for ${cacheKey}. Serving instantly.`);
+        const { timestamp, ...cachedPayload } = cachedData[cacheKey];
 
+        chrome.tabs.sendMessage(tab.id, {
+          type: "STREAM_START",
+          action,
+          targetLanguage
+        });
+
+        chrome.tabs.sendMessage(tab.id, {
+          type: "TRANSLATED_RESULT",
+          ...cachedPayload
+        });
+
+        chrome.tabs.sendMessage(tab.id, { type: "STREAM_END" });
+
+        const insightKey = `wbm_insights_${tab.url}_${targetLanguage}`;
+        const cachedInsights = await chrome.storage.local.get([insightKey]);
+        if (cachedInsights[insightKey]) {
+          const { timestamp: _t, ...insightPayload } = cachedInsights[insightKey];
           chrome.tabs.sendMessage(tab.id, {
-            type: "STREAM_START",
-            action: info.menuItemId,
-            targetLanguage
+            type: "STRUCTURED_INSIGHTS",
+            ...insightPayload
           });
-
-          chrome.tabs.sendMessage(tab.id, {
-            type: "TRANSLATED_RESULT",
-            ...cachedPayload
-          });
-
-          chrome.tabs.sendMessage(tab.id, { type: "STREAM_END" });
-
-          const insightKey = `wbm_insights_${tab.url}_${targetLanguage}`;
-          const cachedInsights = await chrome.storage.local.get([insightKey]);
-          if (cachedInsights[insightKey]) {
-            const { timestamp: _t, ...insightPayload } = cachedInsights[insightKey];
-            chrome.tabs.sendMessage(tab.id, {
-              type: "STRUCTURED_INSIGHTS",
-              ...insightPayload
-            });
-          }
-          return;
         }
+        return;
       }
+    }
 
-      chrome.tabs.sendMessage(tab.id, {
-        type: "STREAM_START",
-        action: info.menuItemId,
-        targetLanguage
-      });
+    chrome.tabs.sendMessage(tab.id, {
+      type: "STREAM_START",
+      action,
+      targetLanguage
+    });
 
-      let screenshotBlob, screenshotDataUrl;
-      if (info.menuItemId === "quality") {
-        try {
-          screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
-          screenshotBlob = await fetch(screenshotDataUrl).then(r => r.blob());
-        } catch (e) {
-          console.log("Screenshot capture failed, proceeding without it:", e);
-        }
+    let screenshotBlob, screenshotDataUrl;
+    if (action === "quality") {
+      try {
+        screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
+        screenshotBlob = await fetch(screenshotDataUrl).then(r => r.blob());
+      } catch (e) {
+        console.log("Screenshot capture failed, proceeding without it:", e);
       }
+    }
 
-      chrome.tabs.sendMessage(
-        tab.id,
-        { type: "REQUEST_CONTENT", action: info.menuItemId },
-        async (response) => {
-          if (!response || (info.menuItemId === "summarize" && !response.content)) return;
+    chrome.tabs.sendMessage(
+      tab.id,
+      { type: "REQUEST_CONTENT", action },
+      async (response) => {
+        if (!response || (action === "summarize" && !response.content)) return;
 
-          let timingSummary = '';
-          let timings = null;
+        let timingSummary = '';
+        let timings = null;
 
-          if(response.timings == null) timingSummary = '';
-          else {
-          timings = response.timings;
-          timingSummary = `
+        if(response.timings == null) timingSummary = '';
+        else {
+        timings = response.timings;
+        timingSummary = `
 Page Resources: ${timings.totalResources} total
 Render blocking: ${timings.renderBlockingCount}
 Scripts: ${timings.scripts.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
 Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
     `;
+        }
+        console.log(`Analyzing for action: ${action}`);
+
+        const [analysisResult, insights] = await Promise.all([
+          aiSession.analyzePage(response.content, timingSummary, action, targetLanguage, tab.id, screenshotBlob),
+          action === "summarize"
+            ? aiSession.getStructuredInsights(response.content)
+            : Promise.resolve({ faqs: [], famousPeople: [] })
+        ]);
+
+        const resultPayload = {
+          action,
+          success: Boolean(analysisResult?.success),
+          summary: analysisResult?.summary ?? analysisResult?.error,
+          originalSummary: analysisResult?.originalSummary,
+          timings: action === "quality" ? timings : undefined,
+          targetLanguage
+        };
+
+        // Cache successful summarize result (screenshot excluded — see cache-report.md §6.2)
+        if (analysisResult?.success && action === "summarize") {
+          const cacheKey = `wbm_summarize_${tab.url}_${targetLanguage}`;
+          await chrome.storage.local.set({
+            [cacheKey]: {
+              ...resultPayload,
+              timestamp: Date.now()
+            }
+          });
+        }
+
+        chrome.tabs.sendMessage(tab.id, {
+          type: "TRANSLATED_RESULT",
+          screenshot: action === "quality" ? screenshotDataUrl : undefined,
+          ...resultPayload
+        });
+
+        // Cache & send insights (summarize only)
+        if (action === "summarize" && insights && (insights.faqs?.length || insights.famousPeople?.length)) {
+          const insightPayload = { insights };
+
+          if (targetLanguage && targetLanguage !== "en") {
+            insightPayload.translatedInsights = await aiSession.translateInsights(insights, targetLanguage);
+            insightPayload.targetLanguage = targetLanguage;
           }
-          console.log(`Analyzing for action: ${info.menuItemId}`);
 
-          const [analysisResult, insights] = await Promise.all([
-            aiSession.analyzePage(response.content, timingSummary, info.menuItemId, targetLanguage, tab.id, screenshotBlob),
-            info.menuItemId === "summarize"
-              ? aiSession.getStructuredInsights(response.content)
-              : Promise.resolve({ faqs: [], famousPeople: [] })
-          ]);
-
-          const resultPayload = {
-            action: info.menuItemId,
-            success: Boolean(analysisResult?.success),
-            summary: analysisResult?.summary ?? analysisResult?.error,
-            originalSummary: analysisResult?.originalSummary,
-            timings: info.menuItemId === "quality" ? timings : undefined,
-            targetLanguage
-          };
-
-          // Cache successful summarize result (screenshot excluded — see cache-report.md §6.2)
-          if (analysisResult?.success && info.menuItemId === "summarize") {
-            const cacheKey = `wbm_summarize_${tab.url}_${targetLanguage}`;
-            await chrome.storage.local.set({
-              [cacheKey]: {
-                ...resultPayload,
-                timestamp: Date.now()
-              }
-            });
-          }
-
-          chrome.tabs.sendMessage(tab.id, {
-            type: "TRANSLATED_RESULT",
-            screenshot: info.menuItemId === "quality" ? screenshotDataUrl : undefined,
-            ...resultPayload
+          const insightKey = `wbm_insights_${tab.url}_${targetLanguage}`;
+          await chrome.storage.local.set({
+            [insightKey]: {
+              ...insightPayload,
+              timestamp: Date.now()
+            }
           });
 
-          // Cache & send insights (summarize only)
-          if (info.menuItemId === "summarize" && insights && (insights.faqs?.length || insights.famousPeople?.length)) {
-            const insightPayload = { insights };
-
-            if (targetLanguage && targetLanguage !== "en") {
-              insightPayload.translatedInsights = await aiSession.translateInsights(insights, targetLanguage);
-              insightPayload.targetLanguage = targetLanguage;
-            }
-
-            const insightKey = `wbm_insights_${tab.url}_${targetLanguage}`;
-            await chrome.storage.local.set({
-              [insightKey]: {
-                ...insightPayload,
-                timestamp: Date.now()
-              }
-            });
-
-            chrome.tabs.sendMessage(tab.id, {
-              type: "STRUCTURED_INSIGHTS",
-              ...insightPayload
-            });
-          }
+          chrome.tabs.sendMessage(tab.id, {
+            type: "STRUCTURED_INSIGHTS",
+            ...insightPayload
+          });
         }
-      );
-    })
+      }
+    );
+  })
+}
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === "summarize" || info.menuItemId === "quality") {
+    await handleAction(info.menuItemId, tab);
   }
 })
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === "PERFORM_ACTION") {
+    chrome.tabs.get(request.tabId, (tab) => {
+      if (tab) handleAction(request.action, tab);
+    });
+    return;
+  }
+
   if (request.type === "TRANSLATE_TEXT") {
     (async () => {
       try {
