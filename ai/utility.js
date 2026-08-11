@@ -172,9 +172,38 @@ ${timingSummary}`;
                 });
             }
 
-            chrome.tabs.sendMessage(tabId, {
-                type: "STREAM_END"
-            });
+            worker.destroy();
+
+            if (action === "quality") {
+                try {
+                    const parsed = JSON.parse(fullText);
+                    const imageBase = chrome.runtime.getURL('Public');
+                    const qa = [
+                        { q: "Is this page showing an error? (real error page, soft-404, or normal)", key: "errorStatus", icon: "🛑" },
+                        { q: "Does the content look complete, or truncated/broken?", key: "contentCompleteness", icon: "📄" },
+                    ];
+                    if (parsed.screenshotQuality) {
+                        qa.push({ q: "Does the screenshot show a properly rendered page, or something broken/blank?", key: "screenshotQuality", icon: "🖼️" });
+                    }
+                    fullText = qa.map(({ q, key, icon }) => {
+                        const answer = parsed[key];
+                        if (!answer) return '';
+                        let img = '';
+                        if (key === 'errorStatus') {
+                            const lower = answer.toLowerCase();
+                            if (lower.includes('normal')) {
+                                img = `<p><img src="${imageBase}/200.jpeg" style="max-width:160px; border-radius:8px; margin-top:8px;"></p>`;
+                            } else if (lower.includes('error') || lower.includes('404') || lower.includes('soft-404') || lower.includes('broken') || lower.includes('not found') || lower.includes('blank') || lower.includes('empty')) {
+                                img = `<p><img src="${imageBase}/404.jpeg" style="max-width:160px; border-radius:8px; margin-top:8px;"></p>`;
+                            }
+                        }
+                        return `<p><strong>${icon} ${q}</strong></p><p>${answer}</p>${img}`;
+                    }).filter(Boolean).join('');
+                } catch (e) {
+                    console.error("Failed to parse quality JSON:", e);
+                }
+            }
+
             console.timeEnd(action);
             
             if (targetLanguage && targetLanguage !== 'en') {
@@ -307,6 +336,35 @@ ${timingSummary}`;
         } catch (error) {
             console.error("Failed to translate insights:", error);
             return insights;
+        }
+    }
+
+    async summarizeChanges(titleChanges, diffText) {
+        try {
+            if (!this.session) await this.init();
+            if (!this.session) return "";
+
+            const worker = await this.session.clone();
+            const MAX_CHARS = 6000;
+            let trimmed = false;
+            if (diffText.length > MAX_CHARS) {
+                diffText = diffText.slice(0, MAX_CHARS) + "\n... (truncated)";
+                trimmed = true;
+            }
+
+            const prompt = `Compare these two versions of a web page and summarize what changed in 2-3 sentences. Focus on meaningful content changes, not formatting.
+
+${titleChanges ? `Title changed from "${titleChanges.before}" to "${titleChanges.after}"` : ""}
+
+Changes:
+${diffText}${trimmed ? "\n\nNote: The changes list was truncated. Focus on the most significant changes visible." : ""}`;
+
+            const result = await worker.prompt(prompt);
+            worker.destroy();
+            return result;
+        } catch (error) {
+            console.error("Failed to summarize changes:", error);
+            return "";
         }
     }
 }

@@ -125,6 +125,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   }
 
+  else if (request.type === "COMPARE_RESULT") {
+    try {
+      showCompareOverlay(request);
+    } catch (e) {
+      showResultOverlay("Compare error: " + e.message);
+    }
+  }
+
+  else if (request.type === "COMPARE_LOADING") {
+    showCompareOverlay({ success: false, error: "Comparing snapshots..." });
+  }
+
 });
 
 function handleLanguageChange(newLang) {

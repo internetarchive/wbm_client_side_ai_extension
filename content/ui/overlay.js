@@ -360,3 +360,168 @@ function getLanguageDisplayName(lang) {
   const found = LANGUAGES.find(l => l.code === lang);
   return found ? found.name : lang;
 }
+
+function formatCompareDate(ts) {
+  if (!ts || ts.length < 8) return ts;
+  const y = ts.substring(0, 4), m = ts.substring(4, 6), d = ts.substring(6, 8);
+  const date = new Date(+y, +m - 1, +d);
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function showCompareOverlay(data) {
+  const shadow = createShadowHost();
+
+  const style = document.createElement('style');
+  style.textContent = compareStyle;
+  shadow.appendChild(style);
+
+  const { popup, content } = createBasePopup("Snapshot Comparison");
+  shadow.appendChild(popup);
+
+  if (!data.success) {
+    const isLoading = data.error === "Comparing snapshots...";
+    content.innerHTML = isLoading
+      ? `<div class="cmp-section" style="text-align:center;padding:24px 18px;"><div class="wbm-spinner" style="margin:0 auto;"></div><p style="margin-top:12px;color:#666;font-size:13px;">${escapeHtml(data.error)}</p></div>`
+      : `<div class="cmp-section" style="padding:24px 18px;"><p style="color:#D0021B;font-size:14px;">${escapeHtml(data.error)}</p></div>`;
+    setupMinimizeBehavior(shadow, popup);
+    return;
+  }
+
+  const dateA = formatCompareDate(data.tsA);
+  const dateB = formatCompareDate(data.tsB);
+  const added = data.stats?.added ?? 0;
+  const removed = data.stats?.removed ?? 0;
+  const diff = Array.isArray(data.diff) ? data.diff : [];
+
+  let html = "";
+
+  html += `<div class="cmp-header">
+    <div class="cmp-versions">
+      <div class="cmp-version"><span class="cmp-date">${dateB}</span><span class="cmp-label">Earliest</span></div>
+      <span class="cmp-vs">vs</span>
+      <div class="cmp-version cmp-current"><span class="cmp-date">${dateA}</span><span class="cmp-label">Current</span></div>
+    </div>
+    <div class="cmp-stats">
+      <span class="cmp-stat cmp-added">+${added} words</span>
+      <span class="cmp-stat cmp-removed">-${removed} words</span>
+    </div>
+  </div>`;
+
+  if (data.aiSummary) {
+    html += `<div class="cmp-section">
+      <div class="cmp-section-title">AI Summary</div>
+      <div class="cmp-ai-summary">${marked.parse(data.aiSummary)}</div>
+    </div>`;
+  }
+
+  let diffHtml = "";
+  const displayDiff = diff.length > 200 ? diff.slice(0, 200) : diff;
+  for (const part of displayDiff) {
+    if (part.type === "added") {
+      diffHtml += `<div class="cmp-line cmp-added"><span class="cmp-sign">+</span>${escapeHtml(part.value)}</div>`;
+    } else if (part.type === "removed") {
+      diffHtml += `<div class="cmp-line cmp-removed"><span class="cmp-sign">-</span>${escapeHtml(part.value)}</div>`;
+    } else if (part.type === "unchanged") {
+      diffHtml += `<div class="cmp-line cmp-unchanged"><span class="cmp-sign"> </span>${escapeHtml(part.value)}</div>`;
+    }
+  }
+
+  let fullDiffHtml = "";
+  for (const part of diff) {
+    if (part.type === "added") {
+      fullDiffHtml += `<div class="cmp-line cmp-added"><span class="cmp-sign">+</span>${escapeHtml(part.value)}</div>`;
+    } else if (part.type === "removed") {
+      fullDiffHtml += `<div class="cmp-line cmp-removed"><span class="cmp-sign">-</span>${escapeHtml(part.value)}</div>`;
+    } else if (part.type === "unchanged") {
+      fullDiffHtml += `<div class="cmp-line cmp-unchanged"><span class="cmp-sign"> </span>${escapeHtml(part.value)}</div>`;
+    }
+  }
+
+  html += `<div class="cmp-section">
+    <div class="cmp-section-title">Changes${diff.length > 200 ? ` (showing first 200 of ${diff.length} parts)` : ""} <span class="cmp-expand-btn cmp-diff-expand">⛶</span></div>
+    <div class="cmp-diff">${diffHtml}</div>
+  </div>`;
+
+  html += `<div class="cmp-section">
+    <div class="cmp-section-title">Visual Preview</div>
+    <div class="cmp-frames">
+      <div class="cmp-frame" data-url="${data.tsB}">
+        <div class="cmp-frame-label">${dateB} <span class="cmp-expand-btn" data-ts="${data.tsB}" data-url="${data.url}" data-label="${dateB}">⛶</span></div>
+        <iframe src="https://web.archive.org/web/${data.tsB}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>
+      </div>
+      <div class="cmp-frame" data-url="${data.tsA}">
+        <div class="cmp-frame-label">${dateA} <span class="cmp-expand-btn" data-ts="${data.tsA}" data-url="${data.url}" data-label="${dateA}">⛶</span></div>
+        <iframe src="https://web.archive.org/web/${data.tsA}if_/${data.url}" sandbox="allow-same-origin" loading="lazy"></iframe>
+      </div>
+    </div>
+  </div>`;
+
+  content.innerHTML = html;
+
+  content.querySelectorAll(".cmp-expand-btn").forEach(btn => {
+    if (btn.classList.contains("cmp-diff-expand")) {
+      btn.addEventListener("click", () => showCompareDiffModal(shadow, fullDiffHtml, `Changes (${added} added, ${removed} removed)`));
+    } else {
+      btn.addEventListener("click", () => {
+        showCompareFrameModal(shadow, btn.dataset.ts, btn.dataset.url, btn.dataset.label);
+      });
+    }
+  });
+
+  setupMinimizeBehavior(shadow, popup);
+}
+
+function showCompareFrameModal(shadow, ts, url, label) {
+  const existing = shadow.getElementById("cmp-modal");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "cmp-modal";
+
+  const frame = document.createElement("iframe");
+  frame.src = `https://web.archive.org/web/${ts}if_/${url}`;
+  frame.sandbox = "allow-same-origin";
+
+  const closeBtn = document.createElement("span");
+  closeBtn.className = "cmp-modal-close";
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => modal.remove());
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+
+  const header = document.createElement("div");
+  header.className = "cmp-modal-header";
+  header.textContent = label;
+
+  modal.appendChild(header);
+  modal.appendChild(frame);
+  modal.appendChild(closeBtn);
+  shadow.appendChild(modal);
+}
+
+function showCompareDiffModal(shadow, diffHtml, label) {
+  const existing = shadow.getElementById("cmp-modal");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "cmp-modal";
+  modal.className = "cmp-modal-diff";
+
+  const closeBtn = document.createElement("span");
+  closeBtn.className = "cmp-modal-close";
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => modal.remove());
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+
+  const header = document.createElement("div");
+  header.className = "cmp-modal-header";
+  header.textContent = label;
+
+  const body = document.createElement("div");
+  body.className = "cmp-diff-modal-body";
+  body.innerHTML = diffHtml;
+
+  modal.appendChild(header);
+  modal.appendChild(body);
+  modal.appendChild(closeBtn);
+  shadow.appendChild(modal);
+}

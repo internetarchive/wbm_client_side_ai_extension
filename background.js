@@ -1,11 +1,14 @@
 import { AISession } from "./ai/utility.js";
 import { StorageCleaner } from "./ai/storageCleaner.js";
-import { getSnapshotStatus } from "./api/cdx.js";
-import { isPlaybackPage } from "./utils/helpers.js";
+import { cdxBase } from "./api/cdx.js";
+import { isPlaybackPage, parsePlaybackUrl, parseDiff } from "./utils/helpers.js";
+import { WordDiffEngine } from "./utils/diff.js";
 
 const aiSession = new AISession();
 const storageCleaner = new StorageCleaner();
 storageCleaner.runSweep(1);
+const cdx = new cdxBase();
+const wordDiff = new WordDiffEngine();
 
 chrome.runtime.onInstalled.addListener(async () => {
   chrome.contextMenus.create({
@@ -26,6 +29,13 @@ chrome.runtime.onInstalled.addListener(async () => {
     id: "summarize",
     parentId: "wbm-parent",
     title: "Summarize Page",
+    contexts: ["page"]
+  });
+
+  chrome.contextMenus.create({
+    id: "compare",
+    parentId: "wbm-parent",
+    title: "Compare Snapshots",
     contexts: ["page"]
   });
   console.log("Extension installed!");
@@ -49,8 +59,141 @@ async function checkAIAvailability() {
   }
 }
 
+async function ensureOffscreenDocument() {
+  const contexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT']
+  });
+  
+  if (contexts.length > 0) return;
+  try {
+    const offscreenReady = new Promise((resolve, reject) => {
+      const listener = (message) => {
+        if(message && message.target === "background" && message.type === "OFFSCREEN_READY") {
+          chrome.runtime.onMessage.removeListener(listener);
+          resolve();
+        }
+      }
+      chrome.runtime.onMessage.addListener(listener);
+    })
+    await chrome.offscreen.createDocument({
+      url: "offscreen/offscreen.html",
+      reasons: [chrome.offscreen.Reason.DOM_PARSER],
+      justification: "Parse archived HTML with Readability for text extraction"
+    });
+    await offscreenReady;
+  } catch (e) {
+    if (!e.message.includes("already exists")) throw e;
+  }
+}
+
+async function extractTextViaOffscreen(html) {
+  const timer = new Promise((_, rej) => {
+    setTimeout(()=> rej(new Error("Timeout waiting for the response from the offscreen doc for the extracted content")), 5000);
+  })
+  try {
+    const response = await Promise.race([
+      chrome.runtime.sendMessage({ type: "EXTRACT_TEXT", html }),
+      timer
+    ]);
+    if(!response) {
+      throw new Error("Received empty response from offscreen document");
+    }
+    return response;
+  } catch (error) {
+    console.error("Extraction failed:", error.message);
+    throw error;
+  }
+}
+
+async function handleCompare(tab) {
+  chrome.tabs.sendMessage(tab.id, { type: "COMPARE_LOADING" });
+
+  const parsed = parsePlaybackUrl(tab.url);
+  if (!parsed) {
+    chrome.tabs.sendMessage(tab.id, {
+      type: "COMPARE_RESULT",
+      success: false,
+      error: "This page is not a valid archive. Please navigate to a specific snapshot."
+    });
+    return;
+  }
+
+  const { ts: tsA, url: originalUrl } = parsed;
+  const tsB = await cdx.getFirstCapture(originalUrl);
+  if (!tsB) {
+    chrome.tabs.sendMessage(tab.id, {
+      type: "COMPARE_RESULT",
+      success: false,
+      error: "Could not find another snapshot to compare with."
+    });
+    return;
+  }
+
+  if (tsA === tsB) {
+    chrome.tabs.sendMessage(tab.id, {
+      type: "COMPARE_RESULT",
+      success: false,
+      error: "This is the first snapshot that you have opened! Please open another snapshot to compare."
+    });
+    return;
+  }
+
+  try {
+    const [htmlA, htmlB] = await Promise.all([
+      fetch(`https://web.archive.org/web/${tsA}id_/${originalUrl}`).then(r => r.text()),
+      fetch(`https://web.archive.org/web/${tsB}id_/${originalUrl}`).then(r => r.text())
+    ]);
+
+    await ensureOffscreenDocument();
+
+    const [cleanA, cleanB] = await Promise.all([
+      extractTextViaOffscreen(htmlA),
+      extractTextViaOffscreen(htmlB)
+    ]);
+
+    await chrome.offscreen.closeDocument().catch(() => {});
+
+    const diff = wordDiff.diff(cleanA.textContent, cleanB.textContent);
+
+    const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff); 
+
+    let aiSummary = "";
+    if (diffLines && (await checkAIAvailability())) {
+      aiSummary = await aiSession.summarizeChanges(
+        { before: cleanA.title, after: cleanB.title },
+        diffLines
+      );
+    }
+
+    chrome.tabs.sendMessage(tab.id, {
+      type: "COMPARE_RESULT",
+      success: true,
+      titleA: cleanA.title,
+      titleB: cleanB.title,
+      tsA,
+      tsB,
+      diff,
+      stats: { added, removed },
+      aiSummary,
+      url: originalUrl
+    });
+  } catch (error) {
+    console.error("Compare failed:", error);
+    chrome.tabs.sendMessage(tab.id, {
+      type: "COMPARE_RESULT",
+      success: false,
+      error: `Comparison failed: ${error.message}`
+    });
+  }
+}
+
 
 async function handleAction(action, tab) {
+  if (action === "compare") {
+    await handleCompare(tab);
+    return;
+  }
+
   if(!isPlaybackPage(tab.url)) {
     console.log("It is not a playback page!");
     chrome.tabs.sendMessage(
@@ -163,7 +306,7 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
 
         let httpStatus = null;
         if (action === "quality") {
-          httpStatus = await getSnapshotStatus(tab.url);
+          httpStatus = await cdx.getSnapshotStatus_quality(tab.url);
           if (timings) timings.httpStatus = httpStatus;
         }
 
@@ -228,7 +371,7 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === "summarize" || info.menuItemId === "quality") {
+  if (info.menuItemId === "summarize" || info.menuItemId === "quality" || info.menuItemId === "compare") {
     await handleAction(info.menuItemId, tab);
   }
 })
