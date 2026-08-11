@@ -67,10 +67,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.screenshot) {
       setScreenshot(request.screenshot);
     }
+    if (request.action === "summarize") {
+      activateSummaryChat(request);
+    }
   }
 
   else if (request.type === "STRUCTURED_INSIGHTS") {
     _originalInsights = request.insights;
+    if (_currentAction === "summarize") enrichSummaryChatContext(request.insights);
     if (request.translatedInsights) {
       appendInsights("en", request.insights);
       appendInsights(request.targetLanguage, request.translatedInsights);

@@ -113,6 +113,11 @@ const hostStyle = `
         line-height: 1.6;
         background: #FFFFFF;
     }
+    #wbm-ai-content:has(.cmp-input-screen) {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+    }
 
     #wbm-ai-content::-webkit-scrollbar {
         width: 6px;
@@ -823,6 +828,61 @@ const compareStyle = `
   .cmp-section {
     padding: 16px 18px;
     border-bottom: 1px solid #F0F0F0;
+  }
+  .cmp-input-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-bottom: none;
+    padding: 8px 18px 24px;
+  }
+  .cmp-hero {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .cmp-hero-title {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #AB2D33;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .cmp-hero-subtitle {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #888;
+    margin-bottom: 18px;
+  }
+  .cmp-snapshot-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #F7F7F7;
+    border: 1px solid #EDEDED;
+    border-radius: 999px;
+    padding: 6px 14px;
+    max-width: 100%;
+  }
+  .cmp-snapshot-chip-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #999;
+    white-space: nowrap;
+  }
+  .cmp-snapshot-chip-value {
+    font-size: 12px;
+    font-weight: 700;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cmp-input-area {
+    max-width: 100%;
   }
   .cmp-section-title {
     font-size: 11px;

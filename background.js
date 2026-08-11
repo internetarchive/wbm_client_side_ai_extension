@@ -549,28 +549,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  if (request.type === "CHAT_RESET") {
-    const key = aiSession.compareChatKey;
-    aiSession.destroyCompareChat();
-    if (key) chrome.storage.local.remove(key);
-    sendResponse({});
-    return;
-  }
-
   if (request.type === "CHAT_QUESTION_START") {
     (async () => {
       try {
-        const { context, question, messageId } = request;
+        const { context, question, messageId, chatType } = request;
         if (!context || !question || !messageId) {
           chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: "Missing parameters." });
           return;
         }
 
-        const sessionKey = `wbm_chat_${context.url}_${context.tsB}_${context.tsA}`;
+        const isSummary = chatType === "summary";
+        const sessionKey = isSummary
+          ? `wbm_summary_chat_${context.url}_${context.lang || "en"}`
+          : `wbm_chat_${context.url}_${context.tsB}_${context.tsA}`;
 
-        if (aiSession.compareChatKey !== sessionKey) {
-          aiSession.destroyCompareChat();
-          const initialized = await aiSession.compareChatInit(sessionKey, context);
+        const activeKey = isSummary ? aiSession.summaryChatKey : aiSession.compareChatKey;
+        if (activeKey !== sessionKey) {
+          if (isSummary) aiSession.destroySummaryChat();
+          else aiSession.destroyCompareChat();
+          const initialized = isSummary
+            ? await aiSession.summaryChatInit(sessionKey, context)
+            : await aiSession.compareChatInit(sessionKey, context);
           if (!initialized) {
             chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: "AI is not available." });
             return;
@@ -581,9 +580,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         _chatStreamControllers[messageId] = controller;
 
         try {
-          const fullText = await aiSession.compareChatStream(question, (chunk) => {
-            chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_CHUNK", messageId, chunk });
-          }, controller.signal);
+          const fullText = isSummary
+            ? await aiSession.summaryChatStream(question, (chunk) => {
+                chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_CHUNK", messageId, chunk });
+              }, controller.signal)
+            : await aiSession.compareChatStream(question, (chunk) => {
+                chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_CHUNK", messageId, chunk });
+              }, controller.signal);
 
           chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_END", messageId, fullText });
         } catch (err) {

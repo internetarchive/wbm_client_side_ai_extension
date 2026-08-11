@@ -143,7 +143,7 @@ const stream = await this.compareChatSession.promptStreaming(message, { signal }
    - Explicit rules: answer in 2–4 sentences, *"Never invent or alter these dates"* (fixes a hallucination bug where the model produced timestamps like `2020-04-27`), refer to versions by their archived date, don't fabricate facts outside the context.
 
 3. `compareChatStream` pushes each completed turn `{ user, assistant }` into `compareChatHistory` and persists it under the session key (also on abort, with `[stopped]`).
-4. `destroyCompareChat()` destroys the session and clears history/key; called by `CHAT_RESET` when switching comparisons.
+4. `destroyCompareChat()` destroys the session and clears history/key. It is only invoked when the session key changes (a different comparison pair, or a summary chat on a different URL/language); the history under the old key is left in storage for the `StorageCleaner` to evict, so a conversation is never lost on overlay re-render or page reload.
 
 ---
 
@@ -186,5 +186,5 @@ worker.destroy();
 | `session.clone()` | Every `analyzePage` / `summarizeChanges`; `destroy()` after |
 | `insightSession` | Created once, never destroyed (reused across summaries) |
 | `compareSession` / `trendSession` | Created once per browser session, reused |
-| `compareChatSession` | Per `(url, tsA, tsB)`; destroyed via `destroyCompareChat()` on `CHAT_RESET` or when the chat key changes |
+| `compareChatSession` | Per `(url, tsA, tsB)`; destroyed via `destroyCompareChat()` when the chat key changes |
 | `translator` / `detector` | Created per translation call, destroyed after |

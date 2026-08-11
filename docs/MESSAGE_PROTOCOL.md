@@ -102,13 +102,9 @@ Reference for every message the extension exchanges between its runtime contexts
 
 ## 4. Comparison chat
 
-### `CHAT_RESET` (content → background)
-- **Payload:** `{ type: "CHAT_RESET" }`
-- **Purpose:** Destroy any existing compare-chat session and remove its persisted storage key.
-
 ### `CHAT_QUESTION_START` (content → background)
-- **Payload:** `{ type: "CHAT_QUESTION_START", context, question, messageId }`
-- **Purpose:** Start streaming an answer. `context` carries url, tsA/tsB, titles, add/remove stats, `aiSummary`, and a `diffPreview`. `messageId` correlates chunks/end/error.
+- **Payload:** `{ type: "CHAT_QUESTION_START", context, question, messageId, chatType }`
+- **Purpose:** Start streaming an answer. `chatType` is `"summary"` or `"compare"` and selects the session key and init path. For both types the background computes `sessionKey` from the context; if it differs from the active session key it destroys the old session and re-inits (restoring history from storage if present). This is the only cleanup path — no explicit reset message is sent by content scripts.
 
 ### `CHAT_STREAM_CHUNK` (background → content)
 - **Payload:** `{ type: "CHAT_STREAM_CHUNK", messageId, chunk }`
@@ -142,7 +138,7 @@ Reference for every message the extension exchanges between its runtime contexts
 
 **Quality:** same skeleton, but `REQUEST_CONTENT` returns timings, prompt includes HTTP status + optional screenshot, and result carries `timings` + `screenshot` (never cached).
 
-**Compare:** `COMPARE_SHOW_INPUT` → `COMPARE_PARSE_INPUT` → `COMPARE_LOADING`/`COMPARE_PROGRESS`* → `COMPARE_RESULT` → chat via `CHAT_RESET`, `CHAT_QUESTION_START`, `CHAT_STREAM_CHUNK`*, `CHAT_STREAM_END`/`CHAT_STREAM_ERROR`, `CHAT_STOP`.
+**Compare:** `COMPARE_SHOW_INPUT` → `COMPARE_PARSE_INPUT` → `COMPARE_LOADING`/`COMPARE_PROGRESS`* → `COMPARE_RESULT` → chat via `CHAT_QUESTION_START`, `CHAT_STREAM_CHUNK`*, `CHAT_STREAM_END`/`CHAT_STREAM_ERROR`, `CHAT_STOP`.
 
 **Live compare:** `PERFORM_ACTION("live-compare")` → `COMPARE_LOADING` → `COMPARE_PROGRESS`* → `COMPARE_RESULT`.
 
