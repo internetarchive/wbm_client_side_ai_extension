@@ -53,6 +53,27 @@ export async function getAvailability(url) {
   }
 }
 
+export async function getTimelineData(url) {
+  const apiUrl = buildCDXUrl(url, {
+    fl: "timestamp,statuscode",
+    collapse: "timestamp:6",
+    limit: 500,
+  });
+  const data = await cdxFetch(apiUrl);
+  if (!data || data.length < 2) return [];
+  const rows = data.slice(1);
+  const years = {};
+  for (const [ts, status] of rows) {
+    const year = ts.substring(0, 4);
+    const month = parseInt(ts.substring(4, 6), 10);
+    if (!years[year]) years[year] = Array(12).fill(null);
+    if (years[year][month - 1] === null) {
+      years[year][month - 1] = { status: status || "-", ts };
+    }
+  }
+  return Object.entries(years).map(([year, months]) => ({ year: parseInt(year), months }));
+}
+
 export async function getSnapshotStatus(playbackUrl) {
   const match = playbackUrl.match(/web\.archive\.org\/web\/(\d{14})(?:id_|if_|js_|cs_|im_|fl_)?\/(.+)/);
   if (!match) return { status: "unavailable", codes: [] };

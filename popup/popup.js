@@ -1,7 +1,8 @@
-import { getPageHealth, getAvailability } from "../api/cdx.js";
+import { getPageHealth, getAvailability, getTimelineData } from "../api/cdx.js";
 
-const CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
-const CACHE_PREFIX = "wbm_health_";
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+const CACHE_PREFIX_HEALTH = "wbm_health_";
+const CACHE_PREFIX_TIMELINE = "wbm_timeline_";
 
 document.addEventListener("DOMContentLoaded", () => {
   const languageSelect = document.getElementById("language-select");
@@ -72,8 +73,8 @@ async function loadPageHealth(forceRefresh = false) {
     }
 
     if (!forceRefresh) {
-      const cached = await chrome.storage.local.get([CACHE_PREFIX + cdxUrl]);
-      const entry = cached[CACHE_PREFIX + cdxUrl];
+      const cached = await chrome.storage.local.get([CACHE_PREFIX_HEALTH + cdxUrl]);
+      const entry = cached[CACHE_PREFIX_HEALTH + cdxUrl];
       if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
         healthSpinner.classList.remove("health-spinner--active");
         renderHealthBody(healthBody, entry.data, cdxUrl, true);
@@ -87,7 +88,7 @@ async function loadPageHealth(forceRefresh = false) {
 
     if (health && health.total > 0) {
       await chrome.storage.local.set({
-        [CACHE_PREFIX + cdxUrl]: { data: health, timestamp: Date.now() },
+        [CACHE_PREFIX_HEALTH + cdxUrl]: { data: health, timestamp: Date.now() },
       });
     }
 
@@ -102,11 +103,11 @@ function renderHealthBody(container, health, cdxUrl, fromCache) {
   }
 
   const truncNote = health.isTruncated
-    ? `<div class="health-note">Showing stats for the latest ${health.total.toLocaleString()} snapshot days (truncated)</div>`
+    ? `<div class="health-note">Showing stats for the ${health.total.toLocaleString()} snapshot days (truncated)</div>`
     : "";
 
   const cacheNote = fromCache
-    ? `<div class="health-link health-refresh" data-url="${cdxUrl}">Showing cached results. Want to view the latest?</div>`
+    ? `<div class="health-cache-note">Showing cached results. <span class="health-link health-refresh" data-url="${cdxUrl}">Refresh?</span></div>`
     : "";
 
   let statusHtml = "";
@@ -126,18 +127,31 @@ function renderHealthBody(container, health, cdxUrl, fromCache) {
     statusHtml += `</div>`;
   }
 
+  const timelineLink = health.total > 0
+    ? `<div class="health-link health-timeline" data-url="${cdxUrl}">📅 View timeline</div>`
+    : "";
+
   container.innerHTML = `
-    <div class="health-headline">${health.totalLabel} snapshot day${health.total !== 1 ? "s" : ""}${health.firstArchived ? ` since <strong>${health.firstArchived}</strong>` : ""}</div>
-    <div class="health-meta">Last archived: ${health.lastArchived || "Unknown"}</div>
-    ${truncNote}
-    ${statusHtml}
-    ${cacheNote}
+    <div class="health-stats">
+      <div class="health-headline">${health.totalLabel} snapshot day${health.total !== 1 ? "s" : ""}${health.firstArchived ? ` since <strong>${health.firstArchived}</strong>` : ""}</div>
+      <div class="health-meta">Last archived: ${health.lastArchived || "Unknown"}</div>
+      ${truncNote}
+      ${statusHtml}
+      ${cacheNote}
+      ${timelineLink}
+    </div>
+    <div class="timeline-container" style="display:none;"></div>
   `;
+
+  const timelineBtn = container.querySelector(".health-timeline");
+  if (timelineBtn) {
+    timelineBtn.addEventListener("click", () => showTimeline(timelineBtn.dataset.url));
+  }
 
   const refreshLink = container.querySelector(".health-refresh");
   if (refreshLink) {
     refreshLink.addEventListener("click", () => {
-      chrome.storage.local.remove(CACHE_PREFIX + refreshLink.dataset.url);
+      chrome.storage.local.remove(CACHE_PREFIX_HEALTH + refreshLink.dataset.url);
       const spinner = document.getElementById("health-spinner");
       if (spinner) spinner.classList.add("health-spinner--active");
       loadPageHealth(true);
@@ -156,6 +170,145 @@ function isPlaybackPage(url) {
 function extractOriginalUrl(playbackUrl) {
   const match = playbackUrl.match(/^https:\/\/web\.archive\.org\/web\/\d+(?:id_|if_)?\/(.+)$/);
   return match ? decodeURIComponent(match[1]) : playbackUrl;
+}
+
+async function showTimeline(cdxUrl) {
+  const stats = document.querySelector(".health-stats");
+  const container = document.querySelector(".timeline-container");
+  const title = document.getElementById("health-card-title");
+  if (!stats || !container || !title) return;
+
+  if (container.style.display !== "none") {
+    showHistory();
+    return;
+  }
+
+  if (!cdxUrl) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return;
+    cdxUrl = isPlaybackPage(tab.url) ? extractOriginalUrl(tab.url) : tab.url;
+  }
+
+  stats.style.display = "none";
+  title.textContent = "📅 Snapshot Timeline";
+  container.style.display = "block";
+  container.innerHTML = `<div class="health-loading">Loading timeline...</div>`;
+
+  const cacheKey = CACHE_PREFIX_TIMELINE + cdxUrl;
+  const cached = await chrome.storage.local.get([cacheKey]);
+  let entry = cached[cacheKey];
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+    entry.data = normalizeTimelineData(entry.data);
+    renderTimeline(container, entry.data, true, cacheKey, cdxUrl);
+    return;
+  }
+
+  const data = await getTimelineData(cdxUrl);
+  if (data && data.length > 0) {
+    await chrome.storage.local.set({ [cacheKey]: { data, timestamp: Date.now() } });
+  }
+  renderTimeline(container, data, false, cacheKey, cdxUrl);
+}
+
+function normalizeTimelineData(data) {
+  if (!data) return data;
+  return data.map(({ year, months }) => ({
+    year,
+    months: months.map(m => {
+      if (m === null) return null;
+      if (typeof m === "string") return { status: m, ts: null };
+      return m;
+    })
+  }));
+}
+
+function renderTimeline(container, data, fromCache, cacheKey, cdxUrl) {
+  if (!data || data.length === 0) {
+    container.innerHTML = `<div class="health-empty">No timeline data available</div>`;
+    return;
+  }
+
+  let html = `<div class="timeline">`;
+  data.forEach(({ year, months }) => {
+    const active = months.filter(m => m !== null).length;
+    html += `<div class="timeline-row">
+      <span class="timeline-year">${year}</span>
+      <div class="timeline-cells">`;
+    months.forEach((m, mi) => {
+      let bg = "#F5F5F5";
+      let label = "no data";
+      let clickable = false;
+      let playUrl = "";
+      if (m) {
+        const status = typeof m === "string" ? m : m.status;
+        const ts = typeof m === "string" ? null : m.ts;
+        if (status === "-") { bg = "#E0E0E0"; label = "- (unrecorded)"; }
+        else if (status.startsWith("2")) { bg = "#D5F0B3"; label = status; clickable = true; playUrl = ts; }
+        else if (status.startsWith("3")) { bg = "#FFE5B3"; label = status; clickable = true; playUrl = ts; }
+        else if (status.startsWith("4") || status.startsWith("5")) { bg = "#FFD0D0"; label = status; clickable = true; playUrl = ts; }
+      }
+      const cls = clickable && playUrl ? "timeline-cell tl-clickable" : "timeline-cell";
+      const style = clickable && playUrl ? `background:${bg};cursor:pointer` : `background:${bg}`;
+      html += `<span class="${cls}" style="${style}" title="${label}" data-url="${clickable && playUrl ? `https://web.archive.org/web/${playUrl}/${cdxUrl}` : ""}"></span>`;
+    });
+    html += `</div>
+      <span class="timeline-count">${active}m</span>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="timeline-legend">
+    <span><span class="tl-dot" style="background:#D5F0B3"></span> 2xx</span>
+    <span><span class="tl-dot" style="background:#FFE5B3"></span> 3xx</span>
+    <span><span class="tl-dot" style="background:#FFD0D0"></span> 4xx/5xx</span>
+    <span><span class="tl-dot" style="background:#E0E0E0"></span> unrecorded</span>
+    <span><span class="tl-dot" style="background:#F5F5F5"></span> no data</span>
+  </div>
+  <div class="health-cache-note" style="margin-top:10px;line-height:1.4;">Each month shows the status of its earliest capture only — later changes within the same month aren't reflected here.</div>`;
+
+  if (fromCache) {
+    html += `<div class="health-cache-note" style="margin-top:10px;">Showing cached results. <span class="health-refresh health-link">Refresh?</span></div>`;
+  }
+
+  html += `<div class="health-link show-history" style="margin-top:10px;">📋 Show history</div>`;
+
+  container.innerHTML = html;
+
+  container.querySelectorAll(".tl-clickable").forEach(el => {
+    el.addEventListener("click", () => {
+      const url = el.dataset.url;
+      if (url) window.open(url, "_blank");
+    });
+  });
+
+  const refreshBtn = container.querySelector(".health-refresh");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+      container.innerHTML = `<div class="health-loading">Loading timeline...</div>`;
+      await chrome.storage.local.remove(cacheKey);
+      const fresh = await getTimelineData(cdxUrl);
+      if (fresh && fresh.length > 0) {
+        await chrome.storage.local.set({ [cacheKey]: { data: fresh, timestamp: Date.now() } });
+      }
+      renderTimeline(container, normalizeTimelineData(fresh), false, cacheKey, cdxUrl);
+    });
+  }
+
+  const showHistoryBtn = container.querySelector(".show-history");
+  if (showHistoryBtn) {
+    showHistoryBtn.addEventListener("click", showHistory);
+  }
+}
+
+function showHistory() {
+  const stats = document.querySelector(".health-stats");
+  const container = document.querySelector(".timeline-container");
+  const title = document.getElementById("health-card-title");
+  if (!stats || !container || !title) return;
+
+  stats.style.display = "block";
+  title.textContent = "Snapshot History";
+  container.style.display = "none";
 }
 
 function formatDate(ts) {

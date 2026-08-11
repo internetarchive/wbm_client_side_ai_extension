@@ -4,7 +4,7 @@ import { getSnapshotStatus } from "./api/cdx.js";
 
 const aiSession = new AISession();
 const storageCleaner = new StorageCleaner();
-storageCleaner.runSweep(30);
+storageCleaner.runSweep(1);
 
 chrome.runtime.onInstalled.addListener(async () => {
   chrome.contextMenus.create({
