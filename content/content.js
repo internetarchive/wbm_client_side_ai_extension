@@ -1,7 +1,7 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const action = request.action;
   if(request.type === "REQUEST_CONTENT") {
-    analyzePage(sendResponse, action);
+    const result = analyzePage(sendResponse);
     return true;
   }
 
@@ -10,11 +10,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   else if (request.type === "STREAM_START") {
-    createStreamingOverlay(request.action, request.targetLanguage, request.action === "summarize");
+    createStreamingOverlay(request.action);
   }
 
   else if (request.type === "STREAM_CHUNK") {
     appendStreamChunk(request.chunk);
+  }
+
+  else if (request.type === "STREAM_END") {
+    finishStream();
   }
 
   else if (request.type === "STREAM_ERROR") {

@@ -6,6 +6,8 @@ async function analyzePage(sendResponse, action) {
     return;
   }
   const content = extractPageContent();
+
+  console.log(content.length);
   
   if (content.length < 100) {
     console.log("Not enough content to analyze");
