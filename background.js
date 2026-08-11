@@ -161,6 +161,7 @@ async function handleLiveCompare(tab) {
         chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Extracting archived content via Readability..." });
         await ensureOffscreenDocument();
         const cleanArchive = await extractTextViaOffscreen(archivedHtml);
+        await chrome.offscreen.closeDocument().catch(() => {});
 
         chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Computing differences..." });
         const diff = wordDiff.diff(cleanArchive.textContent, liveContent);

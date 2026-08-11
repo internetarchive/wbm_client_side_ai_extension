@@ -107,10 +107,6 @@ Rules:
         }
     }
 
-    async compareChat(message) {
-        return this.compareChatStream(message, () => {});
-    }
-
     destroyCompareChat() {
         if (this.compareChatSession) {
             this.compareChatSession.destroy();

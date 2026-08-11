@@ -63,8 +63,6 @@ export class WordDiffEngine {
     let n = this.#tokenA.length;
     let m = this.#tokenB.length;
 
-    this.#dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1).fill(-1));
-
     this.#computeLCS(n, m);
 
     const diffItems = this.#backtrack(n, m);
