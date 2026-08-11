@@ -92,15 +92,33 @@ ${pageContent}`;
 
             const worker = await this.session.clone();
 
+            let promptInput;
+            const streamOptions = action === "quality" ? {
+                responseConstraint: {
+                    type: "object",
+                    properties: {
+                        analysis: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    question: { type: "string" },
+                                    answer: { type: "string" }
+                                },
+                                required: ["question", "answer"],
+                                additionalProperties: false
+                            },
+                            minItems: 1,
+                            maxItems: 3
+                        }
+                    },
+                    required: ["analysis"],
+                    additionalProperties: false
+                }
+            } : {};
+
             if (action === "quality" && screenshotBlob) {
-                await worker.append({
-                    role: "user",
-                    content: [
-                        { type: "image", value: screenshotBlob },
-                        { type: "text", value: "This is a screenshot of the archived web page. Use it alongside the page text to assess visual quality and completeness." }
-                    ]
-                });
-            }
+                const textPrompt = `Analyze this archived web page using the load timing stats and the attached screenshot. Answer each question in 1-2 concise sentences.
 
             // Truncate page content to fit remaining context window
             const remaining = worker.contextWindow - worker.contextUsage;
@@ -113,49 +131,28 @@ ${pageContent}`;
 
             let prompt;
 
-            console.log(targetLanguage);
+Load Stats:
+${timingSummary}`;
 
-            if(action === "summarize") {
-                prompt = `Summarize this archived web page in 2-3 sentences:
-                    ${pageContent}`;
-            } else if(action === "quality") {
-                prompt = `Analyze this archived web page using the page content, load timing stats${screenshotBlob ? ", and the attached screenshot" : ""}. Answer each question in 1-2 concise sentences.
+                promptInput = [{ role: "user", content: [
+                    { type: "image", value: screenshotBlob },
+                    { type: "text", value: textPrompt }
+                ]}];
+            } else if (action === "quality") {
+                promptInput = `Analyze this archived web page using the load timing stats. Answer each question in 1-2 concise sentences.
 
 1) Is this a real page or a soft-404 error page? Look for signs like very short/generic content, "not found" style messaging, or an empty body.
-2) Does the content look complete, or truncated/broken?${screenshotBlob ? "\n3) Does the screenshot show a properly rendered page, or something broken/blank?" : ""}
-
-Page content:
-${pageContent}
+2) Does the content look complete, or truncated/broken?
 
 Load Stats:
 ${timingSummary}`;
-            } 
+            } else {
+                promptInput = `Summarize this archived web page in 2-3 sentences:
+                    ${pageContent}`;
+            }
+
             console.time(action);
-
-            const qualitySchema = {
-                type: "object",
-                properties: {
-                    analysis: {
-                        type: "array",
-                        items: {
-                            type: "object",
-                            properties: {
-                                question: { type: "string" },
-                                answer: { type: "string" }
-                            },
-                            required: ["question", "answer"],
-                            additionalProperties: false
-                        },
-                        minItems: 1,
-                        maxItems: 3
-                    }
-                },
-                required: ["analysis"],
-                additionalProperties: false
-            };
-
-            const streamOptions = action === "quality" ? { responseConstraint: qualitySchema } : {};
-            const stream = await worker.promptStreaming(prompt, streamOptions);
+            const stream = await worker.promptStreaming(promptInput, streamOptions);
 
             let fullText = "";
 
