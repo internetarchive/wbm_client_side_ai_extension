@@ -127,6 +127,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   else if (request.type === "COMPARE_RESULT") {
     try {
+      if (request.tsA && request.url) {
+        _currentSnapshotRef = { ts: request.tsA, url: request.url };
+      }
       showCompareOverlay(request);
     } catch (e) {
       showResultOverlay("Compare error: " + e.message);

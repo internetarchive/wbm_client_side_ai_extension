@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelectorAll(".action-card:not(.action-card--disabled)").forEach((card) => {
+    if (card.dataset.action === "more") return;
     card.addEventListener("click", () => {
       const action = card.dataset.action;
       chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
@@ -38,6 +39,36 @@ document.addEventListener("DOMContentLoaded", () => {
           });
         }
       });
+    });
+  });
+
+  const menuBtn = document.querySelector('.action-card[data-action="more"]');
+  const dropdown = document.getElementById("menu-dropdown");
+  menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const rect = menuBtn.getBoundingClientRect();
+    dropdown.style.top = (rect.bottom + 4) + "px";
+    dropdown.style.right = (document.querySelector(".container").offsetWidth - rect.right) + "px";
+    dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
+  });
+  document.addEventListener("click", () => { dropdown.style.display = "none"; });
+  dropdown.addEventListener("click", (e) => e.stopPropagation());
+
+  dropdown.querySelectorAll(".menu-item").forEach(item => {
+    item.addEventListener("click", () => {
+      dropdown.style.display = "none";
+      const action = item.dataset.action;
+      if (action === "compare") {
+        chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+          if (tab) {
+            chrome.runtime.sendMessage({ type: "PERFORM_ACTION", action: "compare", tabId: tab.id }, () => {
+              window.close();
+            });
+          }
+        });
+      } else if (action === "history") {
+        loadCompareHistory();
+      }
     });
   });
 
@@ -306,4 +337,96 @@ function showHistory() {
   stats.style.display = "block";
   title.textContent = "Snapshot History";
   container.style.display = "none";
+}
+
+async function loadCompareHistory() {
+  const card = document.getElementById("history-card");
+  const body = document.getElementById("history-body");
+  const historyTitle = document.getElementById("history-card-title");
+  if (!card || !body) return;
+
+  card.style.display = "block";
+  historyTitle.textContent = "Compare History";
+  body.innerHTML = `<div class="health-loading">Loading compare history...</div>`;
+
+  const all = await chrome.storage.local.get(null);
+  const keys = Object.keys(all).filter(k => k.startsWith("wbm_compare_"));
+  keys.sort((a, b) => (all[b].timestamp || 0) - (all[a].timestamp || 0));
+
+  if (keys.length === 0) {
+    body.innerHTML = `<div class="history-empty">No comparisons saved yet.<br>Run a comparison first!</div>`;
+    return;
+  }
+
+  let html = `<div class="history-list">`;
+  for (const key of keys) {
+    const entry = all[key];
+    const added = entry.stats?.added ?? 0;
+    const removed = entry.stats?.removed ?? 0;
+
+    const keyMatch = key.match(/^wbm_compare_(.*)_(\d{14})_(\d{14})$/);
+    const url = keyMatch ? keyMatch[1] : key.replace(/^wbm_compare_/, "");
+    const tsA = keyMatch ? keyMatch[2] : "";
+    const tsB = keyMatch ? keyMatch[3] : "";
+    const dateLabelA = formatDate(tsA);
+    const dateLabelB = formatDate(tsB);
+
+    html += `
+      <div class="history-item" data-key="${escapeHtml(key)}">
+        <div class="history-item-content">
+          <div class="history-item-url" title="${escapeHtml(url)}">${escapeHtml(url)}</div>
+          <div class="history-item-dates">
+            <span>${dateLabelB}</span>
+            <span>→</span>
+            <span>${dateLabelA}</span>
+          </div>
+          <div class="history-item-stats">
+            <span class="history-item-added">+${added}</span>
+            <span class="history-item-removed">-${removed}</span>
+          </div>
+        </div>
+        <div class="history-item-overlay">
+          <button class="history-view-btn">View</button>
+        </div>
+      </div>`;
+  }
+  html += `</div>`;
+  body.innerHTML = html;
+
+  body.querySelectorAll(".history-view-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const item = btn.closest(".history-item");
+      if (item) viewCompare(item.dataset.key, all[item.dataset.key]);
+    });
+  });
+}
+
+function viewCompare(key, entry) {
+  const keyMatch = key.match(/^wbm_compare_(.*)_(\d{14})_(\d{14})$/);
+  if (!keyMatch) return;
+  const url = keyMatch[1];
+  const tsA = keyMatch[2];
+  const tsB = keyMatch[3];
+
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    if (!tab) return;
+    chrome.tabs.sendMessage(tab.id, {
+      type: "COMPARE_RESULT",
+      success: true,
+      titleA: entry.titleA || formatDate(tsA),
+      titleB: entry.titleB || formatDate(tsB),
+      tsA, tsB, url,
+      diff: entry.diff || [],
+      stats: entry.stats || { added: 0, removed: 0 },
+      aiSummary: entry.aiSummary || ""
+    });
+    window.close();
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }
