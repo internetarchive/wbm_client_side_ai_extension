@@ -142,7 +142,11 @@ function appendStreamChunk(chunk) {
   if (streamedText.length === 0) {
     streamContentElement.innerHTML = "";
   }
-  streamedText += chunk;
+
+  else {
+    content.innerHTML = result;
+  }
+
   streamContentElement.append(chunk);
 }
 
@@ -158,67 +162,68 @@ function populateTab(tabLang, summaryHtml) {
   }
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+
+
+let streamContentElement = null;
+let streamedText = "";
+
+function createStreamingOverlay(action = "AI Response") {
+  const shadow = createShadowHost();
+
+  const popup = document.createElement("div");
+  popup.id = "wbm-ai-popup";
+
+  const header = document.createElement("div");
+  header.id = "wbm-ai-header";
+  header.textContent = action;
+
+  const closeButton = document.createElement("button");
+  closeButton.id = "wbm-ai-close";
+  closeButton.type = "button";
+  closeButton.textContent = "×";
+  closeButton.onclick = () => removeDiv();
+
+  const content = document.createElement("div");
+  content.id = "wbm-ai-content";
+
+  content.textContent = "Thinking...";
+
+  header.appendChild(closeButton);
+  popup.appendChild(header);
+  popup.appendChild(content);
+
+  shadow.appendChild(popup);
+
+  streamContentElement = content;
+  streamedText = "";
+
+  return content;
 }
 
-function appendInsights(tabLang, insights) {
-  const panel = shadowRoot?.querySelector(`.wbm-tab-panel[data-lang="${tabLang}"]`);
-  if (!panel) return;
 
-  const insightsBody = panel.querySelector('.wbm-accordion[data-type="insights"] .wbm-accordion-body');
-  if (!insightsBody) return;
+function appendStreamChunk(chunk) {
+  if (!streamContentElement) return;
 
-  const loading = insightsBody.querySelector('.wbm-loading-container');
-  if (loading) loading.remove();
-
-  if (!insights) return;
-
-  let html = '<div class="wbm-divider"></div>';
-
-  if (insights.faqs?.length) {
-    html += '<div class="wbm-insights-section">';
-    html += '<div class="wbm-insights-title">Interesting Questions</div>';
-    html += '<div class="wbm-faq-list">';
-    insights.faqs.forEach(faq => {
-      const answerHtml = marked.parse(faq.answer);
-      html += '<div class="wbm-faq-item">';
-      html += '<div class="wbm-faq-question" role="button" tabindex="0">';
-      html += `<span>${escapeHtml(faq.question)}</span>`;
-      html += '<span class="wbm-faq-icon">+</span>';
-      html += '</div>';
-      html += `<div class="wbm-faq-answer">${answerHtml}</div>`;
-      html += '</div>';
-    });
-    html += '</div></div>';
+  if (streamedText.length === 0) {
+    streamContentElement.textContent = "";
   }
 
-  if (insights.famousPeople?.length) {
-    if (!insights.faqs?.length) html += '<div class="wbm-insights-section">';
-    html += '<div class="wbm-insights-title">Famous Personalities</div>';
-    html += '<div class="wbm-famous-list">';
-    insights.famousPeople.forEach(person => {
-      html += `<span class="wbm-famous-chip">${escapeHtml(person)}</span>`;
-    });
-    html += '</div></div>';
-  }
+  streamedText += chunk;
 
-  insightsBody.insertAdjacentHTML('beforeend', html);
+  // Google recommended approach
+  streamContentElement.append(chunk);
 
-  insightsBody.querySelectorAll('.wbm-faq-question').forEach(el => {
-    const toggle = () => {
-      const answer = el.nextElementSibling;
-      const icon = el.querySelector('.wbm-faq-icon');
-      const isOpen = answer.classList.contains('wbm-faq-open');
-      answer.classList.toggle('wbm-faq-open');
-      icon.textContent = isOpen ? '+' : '\u2212';
-      icon.classList.toggle('wbm-faq-icon-open');
-    };
-    el.addEventListener('click', toggle);
-    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-  });
+  streamContentElement.scrollTop =
+    streamContentElement.scrollHeight;
+}
+
+
+function finishStream() {
+  if (!streamContentElement) return;
+
+  const html = marked.parse(streamedText);
+
+  streamContentElement.innerHTML = html;
 }
 
 function setScreenshot(dataUrl) {
