@@ -53,6 +53,35 @@ export async function getAvailability(url) {
   }
 }
 
+export async function getSnapshotStatus(playbackUrl) {
+  const match = playbackUrl.match(/web\.archive\.org\/web\/(\d{14})(?:id_|if_|js_|cs_|im_|fl_)?\/(.+)/);
+  if (!match) return { status: "unavailable", codes: [] };
+  const timestamp = match[1];
+  const originalUrl = decodeURIComponent(match[2]);
+
+  const apiUrl = buildCDXUrl(originalUrl, {
+    fl: "statuscode,mimetype",
+    from: timestamp,
+    to: timestamp,
+  });
+
+  const data = await cdxFetch(apiUrl);
+  if (!data || data.length < 2) return { status: "unavailable", codes: [] };
+
+  const rawRows = data.slice(1);
+  const rawCodes = rawRows.map(row => row[0]);
+  const codes = [...new Set(rawCodes)].filter(c => c && c !== "-");
+
+  if (codes.length === 0) {
+    const isRevisit = rawRows.some(row => (row[1] || "").includes("revisit"));
+    return { status: "unrecorded", codes: [], isRevisit };
+  }
+  if (codes.length === 1) {
+    return { status: "confirmed", codes };
+  }
+  return { status: "chain", codes };
+}
+
 export async function getPageHealth(url) {
   const [firstTs, lastTs, sample] = await Promise.all([
     getFirstCapture(url),

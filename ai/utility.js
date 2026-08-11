@@ -95,7 +95,7 @@ ${pageContent}`;
         }
     }
 
-    async analyzePage(pageContent, timingSummary, action, targetLanguage, tabId, screenshotBlob) {
+    async analyzePage(pageContent, timingSummary, action, targetLanguage, tabId, screenshotBlob, httpStatus = null) {
         try {
             if (!this.session) {
                 await this.init();
@@ -104,31 +104,24 @@ ${pageContent}`;
             const worker = await this.session.clone();
 
             let promptInput;
-            const streamOptions = action === "quality" ? {
-                responseConstraint: {
-                    type: "object",
-                    properties: {
-                        analysis: {
-                            type: "array",
-                            items: {
-                                type: "object",
-                                properties: {
-                                    question: { type: "string" },
-                                    answer: { type: "string" }
-                                },
-                                required: ["question", "answer"],
-                                additionalProperties: false
-                            },
-                            minItems: 1,
-                            maxItems: 3
-                        }
-                    },
-                    required: ["analysis"],
-                    additionalProperties: false
-                }
-            } : {};
+            const qualitySchema = {
+                type: "object",
+                properties: {
+                    errorStatus: { type: "string" },
+                    contentCompleteness: { type: "string" }
+                },
+                required: ["errorStatus", "contentCompleteness"],
+                additionalProperties: false
+            };
+            if (screenshotBlob) {
+                qualitySchema.properties.screenshotQuality = { type: "string" };
+                qualitySchema.required.push("screenshotQuality");
+            }
+            const streamOptions = action === "quality" ? { responseConstraint: qualitySchema } : {};
 
             if (action === "quality" && screenshotBlob) {
+                const statusLine = httpStatus?.status === "confirmed" ? `HTTP Status: ${httpStatus.codes[0]}` :
+                    httpStatus?.status === "chain" ? `HTTP Status chain: ${httpStatus.codes.join(' → ')}` : '';
                 const textPrompt = `Analyze this archived web page using the load timing stats and the attached screenshot. Answer each question in 1-2 concise sentences.
 
             // Truncate page content to fit remaining context window
@@ -142,6 +135,7 @@ ${pageContent}`;
 
             let prompt;
 
+${statusLine}
 Load Stats:
 ${timingSummary}`;
 
@@ -150,11 +144,14 @@ ${timingSummary}`;
                     { type: "text", value: textPrompt }
                 ]}];
             } else if (action === "quality") {
+                const statusLine = httpStatus?.status === "confirmed" ? `HTTP Status: ${httpStatus.codes[0]}` :
+                    httpStatus?.status === "chain" ? `HTTP Status chain: ${httpStatus.codes.join(' → ')}` : '';
                 promptInput = `Analyze this archived web page using the load timing stats. Answer each question in 1-2 concise sentences.
 
-1) Is this page showing an error? (real error page, soft-404, or normal). Look for signs like very short/generic content, "not found" style messaging, or an empty body.
+1) Is this page showing an error? (real error page, soft-404, or normal). Even if the HTTP status is 200, the page can still be a soft-404 — look for signs like very short/generic text, "not found" messaging, or an empty body.
 2) Does the content look complete, or truncated/broken?
 
+${statusLine}
 Load Stats:
 ${timingSummary}`;
             } else {
