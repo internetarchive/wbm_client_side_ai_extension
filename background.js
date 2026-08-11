@@ -106,8 +106,6 @@ async function extractTextViaOffscreen(html) {
 }
 
 async function handleCompare(tab) {
-  chrome.tabs.sendMessage(tab.id, { type: "COMPARE_LOADING" });
-
   const parsed = parsePlaybackUrl(tab.url);
   if (!parsed) {
     chrome.tabs.sendMessage(tab.id, {
@@ -118,73 +116,11 @@ async function handleCompare(tab) {
     return;
   }
 
-  const { ts: tsA, url: originalUrl } = parsed;
-  const tsB = await cdx.getFirstCapture(originalUrl);
-  if (!tsB) {
-    chrome.tabs.sendMessage(tab.id, {
-      type: "COMPARE_RESULT",
-      success: false,
-      error: "Could not find another snapshot to compare with."
-    });
-    return;
-  }
-
-  if (tsA === tsB) {
-    chrome.tabs.sendMessage(tab.id, {
-      type: "COMPARE_RESULT",
-      success: false,
-      error: "This is the first snapshot that you have opened! Please open another snapshot to compare."
-    });
-    return;
-  }
-
-  try {
-    const [htmlA, htmlB] = await Promise.all([
-      fetch(`https://web.archive.org/web/${tsA}id_/${originalUrl}`).then(r => r.text()),
-      fetch(`https://web.archive.org/web/${tsB}id_/${originalUrl}`).then(r => r.text())
-    ]);
-
-    await ensureOffscreenDocument();
-
-    const [cleanA, cleanB] = await Promise.all([
-      extractTextViaOffscreen(htmlA),
-      extractTextViaOffscreen(htmlB)
-    ]);
-
-    await chrome.offscreen.closeDocument().catch(() => {});
-
-    const diff = wordDiff.diff(cleanA.textContent, cleanB.textContent);
-
-    const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff); 
-
-    let aiSummary = "";
-    if (diffLines && (await checkAIAvailability())) {
-      aiSummary = await aiSession.summarizeChanges(
-        { before: cleanA.title, after: cleanB.title },
-        diffLines
-      );
-    }
-
-    chrome.tabs.sendMessage(tab.id, {
-      type: "COMPARE_RESULT",
-      success: true,
-      titleA: cleanA.title,
-      titleB: cleanB.title,
-      tsA,
-      tsB,
-      diff,
-      stats: { added, removed },
-      aiSummary,
-      url: originalUrl
-    });
-  } catch (error) {
-    console.error("Compare failed:", error);
-    chrome.tabs.sendMessage(tab.id, {
-      type: "COMPARE_RESULT",
-      success: false,
-      error: `Comparison failed: ${error.message}`
-    });
-  }
+  chrome.tabs.sendMessage(tab.id, {
+    type: "COMPARE_SHOW_INPUT",
+    ts: parsed.ts,
+    url: parsed.url
+  });
 }
 
 
@@ -383,6 +319,158 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     sendResponse({});
     return;
+  }
+
+  if (request.type === "COMPARE_PARSE_INPUT") {
+    (async () => {
+      try {
+        const originalUrl = request.url;
+        const userQuery = request.text.toLowerCase();
+      
+        chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_LOADING" });
+
+        let tsA;
+        let tsB;
+
+        if (userQuery.includes('first') || userQuery.includes('oldest') || userQuery.includes('initial') || userQuery.includes('earliest')) {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Locating the oldest capture..." });
+          tsB = await cdx.getFirstCapture(originalUrl);
+          tsA = request.ts;
+          if (!tsB) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+              type: "COMPARE_RESULT",
+              success: false,
+              error: "Could not find the oldest snapshot to compare with."
+            });
+            return;
+          }
+        }
+        else if (userQuery.includes('last') || userQuery.includes('latest') || userQuery.includes('newest')) {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Locating the latest capture..." });
+          tsB = await cdx.getLastCapture(originalUrl);
+          tsA = request.ts;
+          if (!tsB) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+              type: "COMPARE_RESULT",
+              success: false,
+              error: "Could not find the latest snapshot to compare with."
+            });
+            return;
+          }
+        }
+        else {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "AI parsing date request..." });
+          const tsResponse = await aiSession.getTimeStamp(request.ts, request.text);
+          if (!tsResponse || !tsResponse.tsA || !tsResponse.tsB) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+              type: "COMPARE_RESULT",
+              success: false,
+              error: "Could not find snapshots to compare with."
+            });
+            return;
+          }
+          tsA = tsResponse.tsA;
+          tsB = tsResponse.tsB;
+          console.log("[COMPARE_PARSE_INPUT] AI parsed timestamps:", tsA, tsB);
+        }
+
+        if (tsA === tsB) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            type: "COMPARE_RESULT",
+            success: false,
+            error: "This is the first snapshot that you have opened! Please open another snapshot to compare."
+          });
+          return;
+        }
+
+        if (parseInt(tsA) > parseInt(tsB)) {
+          console.log(`[COMPARE] Swapping timestamps to maintain chronological order.`);
+          const temp = tsA;
+          tsA = tsB;
+          tsB = temp;
+        }
+
+        chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Checking cache..." });
+        const compareCacheKey = `wbm_compare_${originalUrl}_${tsA}_${tsB}`;
+        const cached = await chrome.storage.local.get([compareCacheKey]);
+        if (cached[compareCacheKey]) {
+          console.log(`[Cache] HIT ${compareCacheKey}`);
+          chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Cache hit! Serving from cache.", status: "done" });
+          const { timestamp: _t, ...cachedPayload } = cached[compareCacheKey];
+          chrome.tabs.sendMessage(sender.tab.id, {
+            type: "COMPARE_RESULT",
+            success: true,
+            ...cachedPayload,
+            tsA,
+            tsB,
+            url: originalUrl
+          });
+          return;
+        }
+
+        chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Fetching both snapshots from Wayback Machine..." });
+        const [htmlA, htmlB] = await Promise.all([
+          fetch(`https://web.archive.org/web/${tsA}id_/${originalUrl}`).then(r => r.text()),
+          fetch(`https://web.archive.org/web/${tsB}id_/${originalUrl}`).then(r => r.text())
+        ]);
+
+        chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Extracting page text via Readability..." });
+        await ensureOffscreenDocument();
+
+        const [cleanA, cleanB] = await Promise.all([
+          extractTextViaOffscreen(htmlA),
+          extractTextViaOffscreen(htmlB)
+        ]);
+
+        await chrome.offscreen.closeDocument().catch(() => {});
+
+        chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Computing word-level diff..." });
+        const diff = wordDiff.diff(cleanA.textContent, cleanB.textContent);
+
+        const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff); 
+
+        let aiSummary = "";
+        if (diffLines && (await checkAIAvailability())) {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Generating AI summary of changes..." });
+          aiSummary = await aiSession.summarizeChanges(
+            { before: cleanA.title, after: cleanB.title },
+            diffLines
+          );
+        }
+
+        const cacheData = {
+          titleA: cleanA.title,
+          titleB: cleanB.title,
+          diff,
+          stats: { added, removed },
+          aiSummary,
+          timestamp: Date.now()
+        };
+        await chrome.storage.local.set({ [compareCacheKey]: cacheData });
+
+        chrome.tabs.sendMessage(sender.tab.id, {
+          type: "COMPARE_RESULT",
+          success: true,
+          titleA: cleanA.title,
+          titleB: cleanB.title,
+          tsA,
+          tsB,
+          diff,
+          stats: { added, removed },
+          aiSummary,
+          url: originalUrl
+        });
+      }
+      catch (error) {
+        console.error("Compare failed:", error);
+        chrome.tabs.sendMessage(sender.tab.id, {
+          type: "COMPARE_RESULT",
+          success: false,
+          error: `Comparison failed: ${error.message}`
+        });
+      }
+    })();
+    return true;
   }
 
   if (request.type === "TRANSLATE_TEXT") {
