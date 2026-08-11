@@ -260,12 +260,58 @@ const hostStyle = `
         font-size: 12px;
         font-weight: 500;
         color: #444444;
+        text-decoration: none;
+        cursor: pointer;
         transition: all 0.2s ease;
     }
 
     .wbm-famous-chip:hover {
-        background: #EAEAEA;
-        border-color: #CCCCCC;
+        background: #AB2D33;
+        border-color: #AB2D33;
+        color: #FFFFFF;
+    }
+
+    .wbm-famous-wrapper {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .wbm-famous-tooltip {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 0;
+
+        width: 220px;
+        max-width: calc(100vw - 24px); /* safety net for very narrow viewports */
+        box-sizing: border-box;
+
+        background: rgba(28, 28, 30, 0.96);
+        backdrop-filter: blur(8px);
+        color: #F2F2F7;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.5;
+        padding: 10px 12px;
+        border-radius: 12px; 
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.08);
+        white-space: normal;
+        word-wrap: break-word;
+
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 9999;
+    }
+
+    .wbm-famous-wrapper:hover .wbm-famous-tooltip {
+        opacity: 1;
+        transform: translateY(-2px);
+    }
+
+    .wbm-famous-wrapper.wbm-align-right .wbm-famous-tooltip {
+        left: auto;
+        right: 0;
     }
 
     .wbm-loading-blur {

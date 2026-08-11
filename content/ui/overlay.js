@@ -117,6 +117,7 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
         content.querySelectorAll('.wbm-tab-panel').forEach(p => p.style.display = 'none');
         const panel = content.querySelector(`.wbm-tab-panel[data-lang="${lang}"]`);
         if (panel) panel.style.display = 'block';
+        requestAnimationFrame(() => updateTooltipAlignment());
       });
     });
     content.querySelector('.wbm-lang-select').addEventListener('change', function() {
@@ -221,26 +222,48 @@ function createStreamingOverlay(action = "AI Response") {
 function appendStreamChunk(chunk) {
   if (!streamContentElement) return;
 
-  if (streamedText.length === 0) {
-    streamContentElement.textContent = "";
+  if (insights.famousPeople?.length) {
+    if (!insights.faqs?.length) html += '<div class="wbm-insights-section">';
+    html += '<div class="wbm-insights-title">Famous Personalities</div>';
+    html += '<div class="wbm-famous-list">';
+    insights.famousPeople.forEach((person, i) => {
+      const originalPerson = insights.famousPeopleOriginal?.[i];
+      const wikiName = originalPerson?.name || person.name;
+      const wikiUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(wikiName.replace(/ /g, '_'))}`;
+      const name = escapeHtml(person.name);
+      const desc = escapeHtml(person.description);
+      html += `<div class="wbm-famous-wrapper">
+        <a href="${wikiUrl}" target="_blank" rel="noopener noreferrer" class="wbm-famous-chip">${name}</a>
+        <div class="wbm-famous-tooltip">${desc}</div>
+      </div>`;
+    });
+    html += '</div></div>';
   }
 
-  streamedText += chunk;
+  insightsBody.insertAdjacentHTML('beforeend', html);
 
-  // Google recommended approach
-  streamContentElement.append(chunk);
-
-  streamContentElement.scrollTop =
-    streamContentElement.scrollHeight;
+  insightsBody.querySelectorAll('.wbm-faq-question').forEach(el => {
+    const toggle = () => {
+      const answer = el.nextElementSibling;
+      const icon = el.querySelector('.wbm-faq-icon');
+      const isOpen = answer.classList.contains('wbm-faq-open');
+      answer.classList.toggle('wbm-faq-open');
+      icon.textContent = isOpen ? '+' : '\u2212';
+      icon.classList.toggle('wbm-faq-icon-open');
+    };
+    el.addEventListener('click', toggle);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  });
+  requestAnimationFrame(() => updateTooltipAlignment());
 }
 
-
-function finishStream() {
-  if (!streamContentElement) return;
-
-  const html = marked.parse(streamedText);
-
-  streamContentElement.innerHTML = html;
+function updateTooltipAlignment() {
+  shadowRoot?.querySelectorAll('.wbm-famous-wrapper').forEach(wrapper => {
+    const rect = wrapper.getBoundingClientRect();
+    const tooltipWidth = 220;
+    const spaceOnRight = window.innerWidth - rect.left;
+    wrapper.classList.toggle('wbm-align-right', spaceOnRight < tooltipWidth + 24);
+  });
 }
 
 function setScreenshot(dataUrl) {

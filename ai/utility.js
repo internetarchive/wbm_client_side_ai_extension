@@ -56,7 +56,15 @@ export class AISession {
                     },
                     famousPeople: {
                         type: "array",
-                        items: { type: "string" }
+                        items: {
+                            type: "object",
+                            properties: {
+                                name: { type: "string" },
+                                description: { type: "string" }
+                            },
+                            required: ["name", "description"],
+                            additionalProperties: false
+                        }
                     }
                 },
                 required: ["faqs", "famousPeople"],
@@ -67,7 +75,7 @@ export class AISession {
 
 Rules:
 - FAQs: 3-5 interesting questions with clear, informative answers
-- famousPeople: 2-4 notable personalities associated with this topic
+- famousPeople: 2-4 notable personalities associated with this topic, each with a one-line description about who they are
 
 Page content:
 ${pageContent}`;
@@ -76,7 +84,10 @@ ${pageContent}`;
             const parsed = JSON.parse(result);
             return {
                 faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
-                famousPeople: Array.isArray(parsed.famousPeople) ? parsed.famousPeople : []
+                famousPeople: Array.isArray(parsed.famousPeople) ? parsed.famousPeople.map(p => ({
+                    name: p.name || "",
+                    description: p.description || ""
+                })) : []
             };
         } catch (error) {
             console.error("Failed to get structured insights:", error);
@@ -252,7 +263,10 @@ ${timingSummary}`;
             texts.push(faq.question);
             texts.push(faq.answer);
         });
-        insights.famousPeople?.forEach(person => texts.push(person));
+        insights.famousPeople?.forEach(person => {
+            texts.push(person.name);
+            texts.push(person.description);
+        });
 
         if (texts.length === 0) return insights;
 
@@ -270,7 +284,13 @@ ${timingSummary}`;
             );
             translator.destroy();
 
-            const result = { faqs: [], famousPeople: [] };
+            const result = {
+                faqs: [],
+                famousPeople: [],
+                famousPeopleOriginal: insights.famousPeople
+                    ? insights.famousPeople.map(p => ({ name: p.name, description: p.description }))
+                    : []
+            };
             let idx = 0;
 
             for (let i = 0; i < (insights.faqs?.length || 0); i++) {
@@ -280,7 +300,10 @@ ${timingSummary}`;
                 });
             }
             for (let i = 0; i < (insights.famousPeople?.length || 0); i++) {
-                result.famousPeople.push(translated[idx++]);
+                result.famousPeople.push({
+                    name: translated[idx++],
+                    description: translated[idx++]
+                });
             }
 
             return result;

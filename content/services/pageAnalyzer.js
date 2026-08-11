@@ -17,5 +17,5 @@ async function analyzePage(sendResponse, action) {
   }
 
   
-  sendResponse({ content, timings });
+  sendResponse({ content, timings: null });
 }

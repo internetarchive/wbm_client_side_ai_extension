@@ -148,13 +148,19 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         async (response) => {
           if (!response || (info.menuItemId === "summarize" && !response.content)) return;
 
-          const timings = response.timings;
-          const timingSummary = `
+          let timingSummary = '';
+          let timings = null;
+
+          if(response.timings == null) timingSummary = '';
+          else {
+          timings = response.timings;
+          timingSummary = `
 Page Resources: ${timings.totalResources} total
 Render blocking: ${timings.renderBlockingCount}
 Scripts: ${timings.scripts.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
 Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join(', ')}
     `;
+          }
           console.log(`Analyzing for action: ${info.menuItemId}`);
 
           const [analysisResult, insights] = await Promise.all([
