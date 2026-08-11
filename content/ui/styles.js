@@ -320,6 +320,74 @@ const hostStyle = `
         background: #FFFFFF;
     }
 
+    .wbm-lang-tab {
+        flex: 1;
+        padding: 12px 6px;
+        border: none;
+        background: transparent;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #777777;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+        text-align: center;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .wbm-lang-tab:hover {
+        color: #333333;
+        background: #F0F0F0;
+    }
+
+    .wbm-lang-tab.wbm-tab-active {
+        color: #AB2D33;
+        background: #FFFFFF;
+        border-bottom: 2px solid #AB2D33;
+    }
+
+    .wbm-lang-select {
+        flex: 0 0 32px;
+        width: 32px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: transparent;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        outline: none;
+        text-align: center;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23777' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center center;
+    }
+
+    .wbm-lang-select::-ms-expand {
+        display: none;
+    }
+
+    .wbm-lang-select:hover {
+        background-color: #F0F0F0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center center;
+    }
+
+    .wbm-lang-select option {
+        color: #333333;
+        background: #FFFFFF;
+        font-size: 12.5px;
+    }
+
     .wbm-tab-panel { display: block; }
 
     .wbm-accordion {

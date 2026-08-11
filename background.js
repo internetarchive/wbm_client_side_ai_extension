@@ -217,3 +217,26 @@ Stylesheets: ${timings.stylesheets.map(s => `${s.name}(${s.duration}ms)`).join('
     })
   }
 })
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === "TRANSLATE_TEXT") {
+    (async () => {
+      try {
+        const translatedText = await aiSession.translateResult(request.text, request.targetLanguage);
+        let translatedInsights = null;
+        if (request.insights) {
+          translatedInsights = await aiSession.translateInsights(request.insights, request.targetLanguage);
+        }
+        chrome.tabs.sendMessage(sender.tab.id, {
+          type: "TRANSLATE_TEXT_RESPONSE",
+          translatedText,
+          translatedInsights,
+          targetLanguage: request.targetLanguage
+        });
+      } catch (error) {
+        console.error("Translation failed:", error);
+      }
+    })();
+    return true;
+  }
+})
