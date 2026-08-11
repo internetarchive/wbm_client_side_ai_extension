@@ -124,9 +124,16 @@ ${pageContent}`;
                     httpStatus?.status === "chain" ? `HTTP Status chain: ${httpStatus.codes.join(' → ')}` : '';
                 const textPrompt = `Analyze this archived web page using the load timing stats and the attached screenshot. Answer each question in 1-2 concise sentences.
 
-1) Is this page showing an error? (real error page, soft-404, or normal). Even if the HTTP status is 200, the page can still be a soft-404 — examine the body content and screenshot carefully for signs like very short/generic text, "not found" messaging, an empty body, or placeholder/search results suggesting the page doesn't exist.
-2) Does the content look complete, or truncated/broken?
-3) Does the screenshot show a properly rendered page, or something broken/blank?
+            // Truncate page content to fit remaining context window
+            const remaining = worker.contextWindow - worker.contextUsage;
+            const promptOverhead = 400; // buffer for prompt text + timing stats + response
+            const available = Math.max(remaining - promptOverhead, 100);
+            const charBudget = available * 4; // ~4 chars per token
+            if (pageContent.length > charBudget) {
+              pageContent = pageContent.slice(0, charBudget);
+            }
+
+            let prompt;
 
 ${statusLine}
 Load Stats:
@@ -165,39 +172,15 @@ ${timingSummary}`;
                 });
             }
 
-            if (action === "quality") {
-                try {
-                    const parsed = JSON.parse(fullText);
-                    const imageBase = chrome.runtime.getURL('Public');
-                    const qa = [
-                        { q: "Is this page showing an error? (real error page, soft-404, or normal)", key: "errorStatus", icon: "🛑" },
-                        { q: "Does the content look complete, or truncated/broken?", key: "contentCompleteness", icon: "📄" },
-                    ];
-                    if (parsed.screenshotQuality) {
-                        qa.push({ q: "Does the screenshot show a properly rendered page, or something broken/blank?", key: "screenshotQuality", icon: "🖼️" });
-                    }
-                    fullText = qa.map(({ q, key, icon }) => {
-                        const answer = parsed[key];
-                        if (!answer) return '';
-                        let img = '';
-                        if (key === 'errorStatus') {
-                            const lower = answer.toLowerCase();
-                            if (lower.includes('normal')) {
-                                img = `<p><img src="${imageBase}/200.jpeg" style="max-width:160px; border-radius:8px; margin-top:8px;"></p>`;
-                            } else if (lower.includes('error') || lower.includes('404') || lower.includes('soft-404') || lower.includes('broken') || lower.includes('not found') || lower.includes('blank') || lower.includes('empty')) {
-                                img = `<p><img src="${imageBase}/404.jpeg" style="max-width:160px; border-radius:8px; margin-top:8px;"></p>`;
-                            }
-                        }
-                        return `<p><strong>${icon} ${q}</strong></p><p>${answer}</p>${img}`;
-                    }).filter(Boolean).join('');
-                } catch (e) {
-                    console.error("Failed to parse quality JSON:", e);
-                }
-            }
-
+            chrome.tabs.sendMessage(tabId, {
+                type: "STREAM_END"
+            });
             console.timeEnd(action);
-
-            if (action !== "quality" && targetLanguage && targetLanguage !== 'en') {
+            
+            if (targetLanguage && targetLanguage !== 'en') {
+                chrome.tabs.sendMessage(tabId, {
+                    type: "SHOW_TRANSLATING"
+                })
                 const translated = await this.translateResult(fullText, targetLanguage);
                 return {
                     success: true,
