@@ -5,12 +5,11 @@
 }
 
 body {
-    width: 320px;
+    width: 480px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
     background: #FFFFFF;
     color: #333333;
     margin: 0;
-    border-radius: 12px;
     overflow: hidden;
 }
 
@@ -119,6 +118,179 @@ body {
     margin: 0 18px;
 }
 
+/* Page Health Card */
+.health-card {
+    margin: 0 18px 14px;
+    background: #FAFAFA;
+    border: 1px solid #EAEAEA;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.health-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #666666;
+    border-bottom: 1px solid #EAEAEA;
+}
+
+.health-card-header svg {
+    color: #AB2D33;
+    flex-shrink: 0;
+}
+
+.health-spinner {
+    width: 12px;
+    height: 12px;
+    margin-left: auto;
+    border: 2px solid #EAEAEA;
+    border-top-color: #AB2D33;
+    border-radius: 50%;
+    display: none;
+}
+
+.health-spinner--active {
+    display: block;
+    animation: health-spin 0.8s linear infinite;
+}
+
+@keyframes health-spin {
+    to { transform: rotate(360deg); }
+}
+
+.health-body {
+    padding: 12px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #333333;
+}
+
+.health-loading {
+    color: #999999;
+    font-size: 12px;
+}
+
+.health-empty {
+    color: #999999;
+    font-size: 12px;
+    text-align: center;
+    padding: 8px 0;
+}
+
+.health-headline {
+    font-size: 13px;
+    color: #222222;
+    margin-bottom: 4px;
+}
+
+.health-headline strong {
+    color: #AB2D33;
+    font-weight: 700;
+}
+
+.health-meta {
+    font-size: 11.5px;
+    color: #777777;
+    margin-bottom: 8px;
+}
+
+.health-note {
+    font-size: 11.5px;
+    color: #777777;
+    margin-top: 4px;
+    margin-bottom: 6px;
+}
+
+.health-link {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #AB2D33;
+    text-decoration: none;
+    margin-top: 4px;
+}
+
+.health-link:hover {
+    text-decoration: underline;
+}
+
+.health-refresh {
+    color: #888888;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 11px;
+    margin-top: 8px;
+    text-align: center;
+}
+
+.health-refresh:hover {
+    color: #666666;
+}
+
+.health-status-bars {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #F0F0F0;
+}
+
+.health-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.health-bar-row:last-child {
+    margin-bottom: 0;
+}
+
+.health-bar-label {
+    font-size: 10px;
+    font-weight: 700;
+    width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.health-bar-track {
+    flex: 1;
+    height: 6px;
+    background: #EAEAEA;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.health-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    min-width: 2px;
+    transition: width 0.5s ease;
+}
+
+.health-bar-count {
+    font-size: 10px;
+    font-weight: 600;
+    color: #666666;
+    width: 26px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+.health-bar-unit {
+    font-size: 8px;
+    font-weight: 400;
+    color: #AAAAAA;
+    margin-left: 1px;
+}
+
 /* Settings */
 .setting {
     padding: 14px 18px;
@@ -189,78 +361,3 @@ select:focus {
     margin-bottom: 10px;
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-    body {
-        background: #1C1C1E;
-        color: #F2F2F7;
-    }
-
-    .header {
-        background: #8C242A;
-        border-bottom-color: #7A1F24;
-    }
-
-    .header svg {
-        color: rgba(255, 255, 255, 0.7);
-    }
-
-    .action-card {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.1);
-        color: #F2F2F7;
-    }
-
-    .action-card:hover:not(:disabled) {
-        background: rgba(171, 45, 51, 0.15);
-        border-color: #AB2D33;
-    }
-
-    .action-card--disabled {
-        opacity: 0.25;
-    }
-
-    .action-icon {
-        background: rgba(171, 45, 51, 0.15);
-        color: #FF6B70;
-    }
-
-    .action-card:hover:not(:disabled) .action-icon {
-        background: rgba(171, 45, 51, 0.25);
-    }
-
-    .action-card--disabled .action-icon {
-        background: rgba(255, 255, 255, 0.04);
-        color: #636366;
-    }
-
-    .divider {
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    label {
-        color: #AEAEB2;
-    }
-
-    select {
-        background: rgba(255, 255, 255, 0.07);
-        border-color: rgba(255, 255, 255, 0.1);
-        color: #F2F2F7;
-    }
-
-    select:focus {
-        border-color: #AB2D33;
-    }
-
-    #save-button {
-        background: #AB2D33;
-    }
-
-    #save-button:hover {
-        background: #C9525A;
-    }
-
-    #status-message {
-        color: #30D158;
-    }
-}
