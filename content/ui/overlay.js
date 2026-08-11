@@ -160,7 +160,11 @@ function appendStreamChunk(chunk) {
   if (streamedText.length === 0) {
     streamContentElement.innerHTML = "";
   }
-  streamedText += chunk;
+
+  else {
+    content.innerHTML = result;
+  }
+
   streamContentElement.append(chunk);
 }
 
@@ -176,42 +180,47 @@ function populateTab(tabLang, summaryHtml) {
   }
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+
+
+let streamContentElement = null;
+let streamedText = "";
+
+function createStreamingOverlay(action = "AI Response") {
+  const shadow = createShadowHost();
+
+  const popup = document.createElement("div");
+  popup.id = "wbm-ai-popup";
+
+  const header = document.createElement("div");
+  header.id = "wbm-ai-header";
+  header.textContent = action;
+
+  const closeButton = document.createElement("button");
+  closeButton.id = "wbm-ai-close";
+  closeButton.type = "button";
+  closeButton.textContent = "×";
+  closeButton.onclick = () => removeDiv();
+
+  const content = document.createElement("div");
+  content.id = "wbm-ai-content";
+
+  content.textContent = "Thinking...";
+
+  header.appendChild(closeButton);
+  popup.appendChild(header);
+  popup.appendChild(content);
+
+  shadow.appendChild(popup);
+
+  streamContentElement = content;
+  streamedText = "";
+
+  return content;
 }
 
-function appendInsights(tabLang, insights) {
-  const panel = shadowRoot?.querySelector(`.wbm-tab-panel[data-lang="${tabLang}"]`);
-  if (!panel) return;
 
-  const insightsBody = panel.querySelector('.wbm-accordion[data-type="insights"] .wbm-accordion-body');
-  if (!insightsBody) return;
-
-  const loading = insightsBody.querySelector('.wbm-loading-container');
-  if (loading) loading.remove();
-
-  if (!insights) return;
-
-  let html = '<div class="wbm-divider"></div>';
-
-  if (insights.faqs?.length) {
-    html += '<div class="wbm-insights-section">';
-    html += '<div class="wbm-insights-title">Interesting Questions</div>';
-    html += '<div class="wbm-faq-list">';
-    insights.faqs.forEach(faq => {
-      const answerHtml = marked.parse(faq.answer);
-      html += '<div class="wbm-faq-item">';
-      html += '<div class="wbm-faq-question" role="button" tabindex="0">';
-      html += `<span>${escapeHtml(faq.question)}</span>`;
-      html += '<span class="wbm-faq-icon">+</span>';
-      html += '</div>';
-      html += `<div class="wbm-faq-answer">${answerHtml}</div>`;
-      html += '</div>';
-    });
-    html += '</div></div>';
-  }
+function appendStreamChunk(chunk) {
+  if (!streamContentElement) return;
 
   if (insights.famousPeople?.length) {
     if (!insights.faqs?.length) html += '<div class="wbm-insights-section">';
