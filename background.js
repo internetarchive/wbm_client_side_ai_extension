@@ -9,36 +9,39 @@ const storageCleaner = new StorageCleaner();
 storageCleaner.runSweep(1);
 const cdx = new cdxBase();
 const wordDiff = new WordDiffEngine();
+const _chatStreamControllers = {};
 
 chrome.runtime.onInstalled.addListener(async () => {
-  chrome.contextMenus.create({
-    id: "wbm-parent",
-    title: "Wayback Machine AI Helper",
-    contexts: ["page", "selection"],
-    documentUrlPatterns: ["*://web.archive.org/web/*"]
-  });
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "wbm-parent",
+      title: "Wayback Machine AI Helper",
+      contexts: ["page", "selection"],
+      documentUrlPatterns: ["*://web.archive.org/web/*"]
+    });
 
-  chrome.contextMenus.create({
-    id: "quality",
-    parentId: "wbm-parent",
-    title: "Check page quality",
-    contexts: ["page"]
-  });
+    chrome.contextMenus.create({
+      id: "quality",
+      parentId: "wbm-parent",
+      title: "Check page quality",
+      contexts: ["page"]
+    });
 
-  chrome.contextMenus.create({
-    id: "summarize",
-    parentId: "wbm-parent",
-    title: "Summarize Page",
-    contexts: ["page"]
-  });
+    chrome.contextMenus.create({
+      id: "summarize",
+      parentId: "wbm-parent",
+      title: "Summarize Page",
+      contexts: ["page"]
+    });
 
-  chrome.contextMenus.create({
-    id: "compare",
-    parentId: "wbm-parent",
-    title: "Compare Snapshots",
-    contexts: ["page"]
+    chrome.contextMenus.create({
+      id: "compare",
+      parentId: "wbm-parent",
+      title: "Compare Snapshots",
+      contexts: ["page"]
+    });
+    console.log("Extension installed!");
   });
-  console.log("Extension installed!");
   await aiSession.init();
 });
 
@@ -164,7 +167,7 @@ async function handleLiveCompare(tab) {
         const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff);
 
         let aiSummary = "";
-        if (diffLines && (await checkAIAvailability())) {
+        if (await checkAIAvailability()) {
           chrome.tabs.sendMessage(tab.id, { type: "COMPARE_PROGRESS", step: "Generating AI summary of changes..." });
           aiSummary = await aiSession.summarizeChanges({ before: cleanArchive.title, after: liveTitle }, diffLines);
         }
@@ -502,7 +505,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const { addedCount: added, removedCount: removed, diffLines } = parseDiff(diff); 
 
         let aiSummary = "";
-        if (diffLines && (await checkAIAvailability())) {
+        if (await checkAIAvailability()) {
           chrome.tabs.sendMessage(sender.tab.id, { type: "COMPARE_PROGRESS", step: "Generating AI summary of changes..." });
           aiSummary = await aiSession.summarizeChanges(
             { before: cleanA.title, after: cleanB.title },
@@ -543,6 +546,70 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     })();
     return true;
+  }
+
+  if (request.type === "CHAT_RESET") {
+    const key = aiSession.compareChatKey;
+    aiSession.destroyCompareChat();
+    if (key) chrome.storage.local.remove(key);
+    sendResponse({});
+    return;
+  }
+
+  if (request.type === "CHAT_QUESTION_START") {
+    (async () => {
+      try {
+        const { context, question, messageId } = request;
+        if (!context || !question || !messageId) {
+          chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: "Missing parameters." });
+          return;
+        }
+
+        const sessionKey = `wbm_chat_${context.url}_${context.tsB}_${context.tsA}`;
+
+        if (aiSession.compareChatKey !== sessionKey) {
+          aiSession.destroyCompareChat();
+          const initialized = await aiSession.compareChatInit(sessionKey, context);
+          if (!initialized) {
+            chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: "AI is not available." });
+            return;
+          }
+        }
+
+        const controller = new AbortController();
+        _chatStreamControllers[messageId] = controller;
+
+        try {
+          const fullText = await aiSession.compareChatStream(question, (chunk) => {
+            chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_CHUNK", messageId, chunk });
+          }, controller.signal);
+
+          chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_END", messageId, fullText });
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_END", messageId, fullText: "" });
+          } else {
+            throw err;
+          }
+        } finally {
+          delete _chatStreamControllers[messageId];
+        }
+      } catch (error) {
+        console.error("Chat stream error:", error);
+        chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: error.message });
+      }
+    })();
+    return true;
+  }
+
+  if (request.type === "CHAT_STOP") {
+    const { messageId } = request;
+    if (messageId && _chatStreamControllers[messageId]) {
+      _chatStreamControllers[messageId].abort();
+      delete _chatStreamControllers[messageId];
+    }
+    sendResponse({});
+    return;
   }
 
   if (request.type === "TRANSLATE_TEXT") {

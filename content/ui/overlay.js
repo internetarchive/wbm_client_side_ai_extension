@@ -5,6 +5,7 @@ let _processStepCount = 0;
 function showResultOverlay(summary) {
   const shadow = createShadowHost();
   const { popup, content } = createBasePopup("AI Result");
+  popup.style.height = "auto";
   content.innerHTML = `<p style="padding: 12px 16px; font-size: 13.5px; color: #8e8e93;">${summary}</p>`;
   shadow.appendChild(popup);
   setupMinimizeBehavior(shadow, popup);
@@ -111,8 +112,26 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
   html +=   `</div>`;
   html += `</div>`;
 
+  html += `
+  <div class="cmp-section cmp-chat-section" style="margin-top: 10px">
+    <div class="cmp-chat-messages" id="cmp-chat-messages"></div>
+    <div class="cmp-chat-input-row">
+      <input type="text" class="cmp-chat-input" id="cmp-chat-input" placeholder="Ask about this page...">
+      <button class="cmp-chat-send-btn" id="cmp-chat-send-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>`;
+
   content.innerHTML = html;
   shadow.appendChild(popup);
+
+  const chatStyle = document.createElement('style');
+  chatStyle.textContent = cmpChatStyle;
+  shadow.appendChild(chatStyle);
 
   setupMinimizeBehavior(shadow, popup);
 
@@ -158,6 +177,21 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
   streamContentElement = processPanel.querySelector('.wbm-stream-text');
   streamedText = "";
   _processStepCount = 0;
+
+  const chatInput = content.querySelector("#cmp-chat-input");
+  const chatSend = content.querySelector("#cmp-chat-send-btn");
+  if (chatInput && chatSend) {
+    const sendMsg = () => {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      appendChatMessage(content, "user", text);
+      chatInput.value = "";
+      const msgEl = appendChatMessage(content, "ai", "Logic coming soon...");
+      setTimeout(() => { msgEl.textContent = "Chat for summary will be implemented next."; }, 600);
+    };
+    chatSend.addEventListener("click", sendMsg);
+    chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
+  }
 
   return content;
 }
@@ -372,6 +406,59 @@ function formatCompareDate(ts) {
 
 let _compareLoadingRef = null;
 let _currentSnapshotRef = null;
+let _currentCompareCtx = null;
+let _pendingStreamMsgs = {};
+
+function restoreSendBtn(chatSend, chatInput) {
+  if (!chatSend) return;
+  chatSend._streaming = false;
+  chatSend._msgId = null;
+  chatSend.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13"></line>
+    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+  </svg>`;
+  chatSend.className = "cmp-chat-send-btn";
+  chatSend.disabled = false;
+  if (chatInput) { chatInput.disabled = false; chatInput.focus(); }
+}
+
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.type === "CHAT_STREAM_CHUNK" || request.type === "CHAT_STREAM_END" || request.type === "CHAT_STREAM_ERROR") {
+    const pending = _pendingStreamMsgs[request.messageId];
+    if (!pending) return false;
+
+    if (request.type === "CHAT_STREAM_CHUNK") {
+      if (pending.thinkingEl) {
+        pending.thinkingEl.remove();
+        pending.thinkingEl = null;
+      }
+      pending.fullText += request.chunk;
+      pending.el.textContent = pending.fullText;
+    } else if (request.type === "CHAT_STREAM_END") {
+      if (pending.thinkingEl) {
+        pending.thinkingEl.remove();
+        pending.thinkingEl = null;
+      }
+      if (pending.fullText) {
+        pending.el.innerHTML = marked.parse(pending.fullText);
+      } else {
+        pending.el.textContent = "Response stopped.";
+      }
+      restoreSendBtn(pending.chatSend, pending.chatInput);
+      delete _pendingStreamMsgs[request.messageId];
+    } else {
+      if (pending.thinkingEl) {
+        pending.thinkingEl.remove();
+        pending.thinkingEl = null;
+      }
+      pending.el.textContent = "Error: " + (request.error || "Unknown error");
+      restoreSendBtn(pending.chatSend, pending.chatInput);
+      delete _pendingStreamMsgs[request.messageId];
+    }
+    return false;
+  }
+  return false;
+});
 
 function showCompareLoading(msg) {
   if (_compareLoadingRef) return;
@@ -380,6 +467,7 @@ function showCompareLoading(msg) {
   style.textContent = compareStyle;
   shadow.appendChild(style);
   const { popup, content } = createBasePopup("Snapshot Comparison");
+  popup.style.height = "auto";
   shadow.appendChild(popup);
   setupMinimizeBehavior(shadow, popup);
   content.innerHTML = `
@@ -563,6 +651,7 @@ function showCompareOverlay(data) {
       style.textContent = compareStyle;
       shadow.appendChild(style);
       const { popup, content } = createBasePopup("Snapshot Comparison");
+      popup.style.height = "auto";
       shadow.appendChild(popup);
       content.innerHTML = `<div class="cmp-section" style="padding:24px 18px;"><p style="color:#D0021B;font-size:14px;">${escapeHtml(data.error)}</p></div>`;
       setupMinimizeBehavior(shadow, popup);
@@ -575,11 +664,27 @@ function showCompareOverlay(data) {
   const content = _compareLoadingRef ? _compareLoadingRef.content : null;
   _compareLoadingRef = null;
 
+  if (popup) popup.style.height = "";
+
   const dateA = formatCompareDate(data.tsA);
   const dateB = formatCompareDate(data.tsB);
   const added = data.stats?.added ?? 0;
   const removed = data.stats?.removed ?? 0;
   const diff = Array.isArray(data.diff) ? data.diff : [];
+
+  chrome.runtime.sendMessage({ type: "CHAT_RESET" });
+
+  _currentCompareCtx = {
+    titleA: data.titleA || "",
+    titleB: data.titleB || "",
+    tsA: data.tsA,
+    tsB: data.tsB,
+    url: data.url,
+    added,
+    removed,
+    aiSummary: data.aiSummary || "",
+    diffPreview: diff.filter(p => p.type !== "unchanged").slice(0, 80).map(p => `${p.type === "added" ? "+" : "-"} ${p.value}`).join("\n").slice(0, 3000)
+  };
 
   let html = "";
 
@@ -666,11 +771,26 @@ function showCompareOverlay(data) {
     </div>
   </div>`;
 
+  html += `
+  <div class="cmp-section cmp-chat-section">
+    <div class="cmp-chat-messages" id="cmp-chat-messages"></div>
+    <div class="cmp-chat-input-row">
+      <input type="text" class="cmp-chat-input" id="cmp-chat-input" placeholder="Ask about these changes...">
+      <button class="cmp-chat-send-btn" id="cmp-chat-send-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>`;
+
+  let popupData;
   if (!popup) {
     const style = document.createElement('style');
-    style.textContent = compareStyle;
+    style.textContent = compareStyle + cmpChatStyle;
     shadow.appendChild(style);
-    const popupData = createBasePopup("Snapshot Comparison");
+    popupData = createBasePopup("Snapshot Comparison");
     shadow.appendChild(popupData.popup);
     setupMinimizeBehavior(shadow, popupData.popup);
     popupData.content.innerHTML = html;
@@ -684,6 +804,10 @@ function showCompareOverlay(data) {
     const backBtn = popupData.content.querySelector(".cmp-back-btn");
     if (backBtn) backBtn.addEventListener("click", () => _currentSnapshotRef && showCompareInput(_currentSnapshotRef));
   } else {
+    const existingStyle = shadow.querySelector("style");
+    if (existingStyle && !existingStyle.textContent.includes("cmp-chat-section")) {
+      existingStyle.textContent += "\n" + cmpChatStyle;
+    }
     content.innerHTML = html;
     content.querySelectorAll(".cmp-expand-btn").forEach(btn => {
       if (btn.classList.contains("cmp-diff-expand")) {
@@ -695,6 +819,67 @@ function showCompareOverlay(data) {
     const backBtn = content.querySelector(".cmp-back-btn");
     if (backBtn) backBtn.addEventListener("click", () => _currentSnapshotRef && showCompareInput(_currentSnapshotRef));
   }
+
+  const chatContainer = popup ? content : popupData.content;
+  const chatInput = chatContainer.querySelector("#cmp-chat-input");
+  const chatSend = chatContainer.querySelector("#cmp-chat-send-btn");
+  if (chatInput && chatSend) {
+    const chatKey = `wbm_chat_${data.url}_${data.tsB}_${data.tsA}`;
+    chrome.storage.local.get([chatKey], result => {
+      const stored = result[chatKey];
+      if (stored && stored.initialPrompts) {
+        const messagesEl = chatContainer.querySelector("#cmp-chat-messages");
+        if (messagesEl) messagesEl.innerHTML = "";
+        for (const entry of stored.initialPrompts) {
+          if (entry.role === "user" || entry.role === "assistant") {
+            appendChatMessage(chatContainer, entry.role === "user" ? "user" : "ai", entry.content);
+          }
+        }
+      }
+    });
+    const sendMsg = () => {
+      if (chatSend._streaming) {
+        chrome.runtime.sendMessage({ type: "CHAT_STOP", messageId: chatSend._msgId });
+        return;
+      }
+      const text = chatInput.value.trim();
+      if (!text) return;
+      appendChatMessage(chatContainer, "user", text);
+      chatInput.value = "";
+      const msgEl = appendChatMessage(chatContainer, "ai", "");
+      const thinkingEl = document.createElement("div");
+      thinkingEl.className = "thinking-dots";
+      thinkingEl.innerHTML = `<span></span><span></span><span></span>`;
+      msgEl.appendChild(thinkingEl);
+      const msgId = "cmp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      chatSend._streaming = true;
+      chatSend._msgId = msgId;
+      chatSend.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor"/></svg>`;
+      chatSend.className = "cmp-chat-send-btn cmp-chat-stop-btn";
+      _pendingStreamMsgs[msgId] = { el: msgEl, thinkingEl, chatInput, chatSend, fullText: "" };
+      chatInput.disabled = true;
+      chrome.runtime.sendMessage(
+        { type: "CHAT_QUESTION_START", context: _currentCompareCtx, question: text, messageId: msgId }
+      );
+    };
+    chatSend.addEventListener("click", sendMsg);
+    chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
+  }
+}
+
+function appendChatMessage(container, role, text) {
+  const messages = container.querySelector("#cmp-chat-messages");
+  if (!messages) return null;
+  const msg = document.createElement("div");
+  msg.className = `cmp-chat-msg cmp-chat-msg-${role}`;
+  if (role === "ai") {
+    msg.innerHTML = marked.parse(text || "");
+  } else {
+    msg.textContent = text;
+  }
+  messages.appendChild(msg);
+  messages.scrollTop = messages.scrollHeight;
+  return msg;
 }
 
 function showCompareFrameModal(shadow, ts, url, label) {

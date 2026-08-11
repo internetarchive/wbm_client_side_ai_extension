@@ -1,9 +1,123 @@
+import { formatDate } from "../utils/helpers.js";
+
 export class AISession {
     constructor() {
         this.session = null;
         this.insightSession = null;
         this.compareSession = null;
         this.trendSession = null;
+        this.compareChatSession = null;
+    }
+
+    async compareChatInit(sessionKey, context) {
+        try {
+            const availability = await LanguageModel.availability();
+            if (availability !== "available") {
+                console.warn("Compare chat AI not available:", availability);
+                return false;
+            }
+
+            this.compareChatKey = sessionKey;
+
+            const stored = await chrome.storage.local.get([sessionKey]);
+            let sessionData = stored[sessionKey];
+
+            if (sessionData && sessionData.initialPrompts) {
+                this.compareChatSession = await LanguageModel.create(sessionData);
+                this.compareChatHistory = [...sessionData.initialPrompts];
+                return true;
+            }
+
+            const systemPrompt = `You are a helpful assistant analyzing a comparison of two web page versions from the Wayback Machine. You have been given specific context about the comparison - use it to answer the user's questions accurately.
+
+Comparison Context:
+- URL: ${context.url}
+- Version A (newer, ${formatDate(context.tsA)}): ${context.titleA}
+- Version B (older, ${formatDate(context.tsB)}): ${context.titleB}
+- Changes: +${context.added} words added, -${context.removed} words removed
+- AI Summary: ${context.aiSummary}
+
+Key Changes:
+${context.diffPreview}
+
+Rules:
+- Answer concisely in 2-4 sentences.
+- Base your answers strictly on the context provided above.
+- When referring to a version, always use its exact archived date (e.g. "the May 27, 2005 version") instead of "version A" or "version B". Never invent or alter these dates.
+- If asked about something not in the context, say so.
+- Do not make up specific facts or data not present in the context.`;
+
+            const initialPrompts = [{ role: "system", content: systemPrompt }];
+
+            this.compareChatSession = await LanguageModel.create({
+                expectedOutputLanguages: ["en"],
+                expectedInputs: [{ type: "text" }],
+                initialPrompts
+            });
+
+            this.compareChatHistory = [...initialPrompts];
+            return true;
+        } catch (error) {
+            console.error("Failed to create compare chat session:", error);
+            return false;
+        }
+    }
+
+    async compareChatStream(message, onChunk, signal) {
+        if (!this.compareChatSession) {
+            throw new Error("Chat session not initialized. Call compareChatInit first.");
+        }
+
+        let fullText = "";
+
+        try {
+            const stream = await this.compareChatSession.promptStreaming(message, { signal });
+
+            for await (const chunk of stream) {
+                fullText += chunk;
+                onChunk(chunk);
+            }
+
+            this.compareChatHistory.push(
+                { role: "user", content: message },
+                { role: "assistant", content: fullText }
+            );
+
+            if (this.compareChatKey) {
+                await chrome.storage.local.set({
+                    [this.compareChatKey]: { initialPrompts: this.compareChatHistory, timestamp: Date.now() }
+                });
+            }
+
+            return fullText;
+        } catch (error) {
+            if (fullText) {
+                this.compareChatHistory.push(
+                    { role: "user", content: message },
+                    { role: "assistant", content: fullText + " [stopped]" }
+                );
+
+                if (this.compareChatKey) {
+                    await chrome.storage.local.set({
+                        [this.compareChatKey]: { initialPrompts: this.compareChatHistory, timestamp: Date.now() }
+                    });
+                }
+            }
+            throw error;
+        }
+    }
+
+    async compareChat(message) {
+        return this.compareChatStream(message, () => {});
+    }
+
+    destroyCompareChat() {
+        if (this.compareChatSession) {
+            this.compareChatSession.destroy();
+            this.compareChatSession = null;
+        }
+        this.compareChatHistory = null;
+        this.compareChatKey = null;
     }
 
     async CompareSessionInit() {
@@ -499,12 +613,12 @@ ${timingSummary}`;
                 trimmed = true;
             }
 
+            const titleChanged = titleChanges && titleChanges.before !== titleChanges.after;
+            const noTextChanges = !diffText.trim();
+
             const prompt = `Compare these two versions of a web page and summarize what changed in 2-3 sentences. Focus on meaningful content changes, not formatting.
-
-${titleChanges ? `Title changed from "${titleChanges.before}" to "${titleChanges.after}"` : ""}
-
-Changes:
-${diffText}${trimmed ? "\n\nNote: The changes list was truncated. Focus on the most significant changes visible." : ""}`;
+${titleChanged ? `\nTitle changed from "${titleChanges.before}" to "${titleChanges.after}".` : ""}
+${noTextChanges ? "\nNo textual content differences were detected between the two versions." : `\nChanges:\n${diffText}${trimmed ? "\n\nNote: The changes list was truncated. Focus on the most significant changes visible." : ""}`}`;
 
             const result = await worker.prompt(prompt);
             worker.destroy();
