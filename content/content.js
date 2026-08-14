@@ -6,7 +6,7 @@ let _pendingInsightsLang = null;
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const action = request.action;
   if(request.type === "REQUEST_CONTENT") {
-    const result = analyzePage(sendResponse);
+    analyzePage(sendResponse, action);
     return true;
   }
 
@@ -15,15 +15,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   else if (request.type === "STREAM_START") {
-    createStreamingOverlay(request.action);
+    _currentAction = request.action;
+    createStreamingOverlay(request.action, request.targetLanguage, request.action === "summarize");
+    window.__onLanguageChange = handleLanguageChange;
   }
 
   else if (request.type === "STREAM_CHUNK") {
     appendStreamChunk(request.chunk);
-  }
-
-  else if (request.type === "STREAM_END") {
-    finishStream();
   }
 
   else if (request.type === "STREAM_ERROR") {
