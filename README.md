@@ -167,8 +167,7 @@ Detailed technical documentation lives in the `[docs/](docs/)` folder:
 
 **GSoC progress & blog**
 
-- [Development log (Notion)](https://www.notion.so/GSoC-2026-Internet-Archive-366417d0f1468091ad29cf698b03cff2)
-- [Hashnode blog](https://sudiptadas.hashnode.dev)
+- [GSoC Final Report](https://gist.github.com/sdass1918/f196fdb73f870b038953bc88ea2fec31#pr-1-initial-extension-setup)
 
 ---
 
