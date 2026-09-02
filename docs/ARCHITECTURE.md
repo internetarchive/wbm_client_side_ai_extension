@@ -10,22 +10,7 @@ The extension is a **Manifest V3** Chrome extension. All AI work happens **on-de
 
 Four runtime contexts participate:
 
-```
-┌─────────────────────┐   chrome.runtime.sendMessage / chrome.tabs.sendMessage
-│  Background service │◀───────────────────────────────┐
-│  worker (MV3)       │                                │
-│  background.js      │                                │
-└─────┬──────────┬────┘                                │
-      │          │                                     │
-      ▼          ▼                                     ▼
-┌──────────┐ ┌──────────────┐   ┌──────────────────────────┐
-│ Offscreen │ │ Content script│  │ Popup                    │
-│ document  │ │ (per tab)     │  │ popup/popup.html         │
-│ offscreen │ │ content.js    │  │                          │
-│           │ │ + ui/ +       │  │ action cards, health,    │
-│ Readability│ │ services/    │  │ timeline, trend, history  │
-└──────────┘ └──────────────┘  └──────────────────────────┘
-```
+![Architecture diagram](../assets/readme/architecture.png)
 
 | Context | When it lives | Responsibilities |
 |---|---|---|

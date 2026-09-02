@@ -158,6 +158,8 @@ function createStreamingOverlay(action, targetLanguage, showInsights) {
       content.querySelectorAll('.wbm-tab-panel').forEach(p => p.style.display = 'none');
       const panel = content.querySelector(`.wbm-tab-panel[data-lang="${lang}"]`);
       if (panel) panel.style.display = 'block';
+      const chatSection = content.querySelector('.cmp-chat-section');
+      if (chatSection) chatSection.style.display = lang === "process" ? 'none' : '';
       requestAnimationFrame(() => updateTooltipAlignment());
     });
   });
@@ -254,11 +256,7 @@ function appendStreamChunk(chunk) {
     if (output) output.style.display = 'block';
     addProcessStep("Receiving AI response stream...", "active");
   }
-
-  else {
-    content.innerHTML = result;
-  }
-
+  streamedText += chunk;
   streamContentElement.append(chunk);
   const log = shadowRoot?.querySelector('.wbm-process-log');
   if (log) log.scrollTop = log.scrollHeight;
@@ -276,47 +274,42 @@ function populateTab(tabLang, summaryHtml) {
   }
 }
 
-
-
-let streamContentElement = null;
-let streamedText = "";
-
-function createStreamingOverlay(action = "AI Response") {
-  const shadow = createShadowHost();
-
-  const popup = document.createElement("div");
-  popup.id = "wbm-ai-popup";
-
-  const header = document.createElement("div");
-  header.id = "wbm-ai-header";
-  header.textContent = action;
-
-  const closeButton = document.createElement("button");
-  closeButton.id = "wbm-ai-close";
-  closeButton.type = "button";
-  closeButton.textContent = "×";
-  closeButton.onclick = () => removeDiv();
-
-  const content = document.createElement("div");
-  content.id = "wbm-ai-content";
-
-  content.textContent = "Thinking...";
-
-  header.appendChild(closeButton);
-  popup.appendChild(header);
-  popup.appendChild(content);
-
-  shadow.appendChild(popup);
-
-  streamContentElement = content;
-  streamedText = "";
-
-  return content;
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
+function appendInsights(tabLang, insights) {
+  const panel = shadowRoot?.querySelector(`.wbm-tab-panel[data-lang="${tabLang}"]`);
+  if (!panel) return;
 
-function appendStreamChunk(chunk) {
-  if (!streamContentElement) return;
+  const insightsBody = panel.querySelector('.wbm-accordion[data-type="insights"] .wbm-accordion-body');
+  if (!insightsBody) return;
+
+  const loading = insightsBody.querySelector('.wbm-loading-container');
+  if (loading) loading.remove();
+
+  if (!insights) return;
+
+  let html = '<div class="wbm-divider"></div>';
+
+  if (insights.faqs?.length) {
+    html += '<div class="wbm-insights-section">';
+    html += '<div class="wbm-insights-title">Interesting Questions</div>';
+    html += '<div class="wbm-faq-list">';
+    insights.faqs.forEach(faq => {
+      const answerHtml = marked.parse(faq.answer);
+      html += '<div class="wbm-faq-item">';
+      html += '<div class="wbm-faq-question" role="button" tabindex="0">';
+      html += `<span>${escapeHtml(faq.question)}</span>`;
+      html += '<span class="wbm-faq-icon">+</span>';
+      html += '</div>';
+      html += `<div class="wbm-faq-answer">${answerHtml}</div>`;
+      html += '</div>';
+    });
+    html += '</div></div>';
+  }
 
   if (insights.famousPeople?.length) {
     if (!insights.faqs?.length) html += '<div class="wbm-insights-section">';
