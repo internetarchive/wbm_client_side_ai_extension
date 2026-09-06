@@ -29,7 +29,10 @@
         "./content/ui/shadow-dom.js",
         "./content/ui/quality-popup.js",
         "./content/ui/base-popup.js",
-        "./content/ui/overlay.js",
+        "./content/ui/utils.js",
+        "./content/ui/streaming-analyze.js",
+        "./content/ui/comparison.js",
+        "./content/ui/chat.js",
         "./content/services/contentExtractor.js",
         "./content/services/pageAnalyzer.js",
         "./content/content.js"

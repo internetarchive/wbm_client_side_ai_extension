@@ -85,7 +85,7 @@ wbm_summarize_<page-url>_<target-language>
 chrome.tabs.sendMessage(tab.id, { type: "STREAM_START", action, targetLanguage });
 ```
 
-The content script (`content/content.js`) calls `createStreamingOverlay(action, targetLanguage, showInsights)` (content/ui/overlay.js), which builds the tabbed overlay (Summary / translated tab / Logs) and wires up the accordion toggles. `showInsights` is `true` for summarize.
+The content script (`content/content.js`) calls `createStreamingOverlay(action, targetLanguage, showInsights)` (content/ui/streaming-analyze.js), which builds the tabbed overlay (Summary / translated tab / Logs) and wires up the accordion toggles. `showInsights` is `true` for summarize.
 
 ### 6.2 Extract page content
 
@@ -161,7 +161,7 @@ If insights were produced, the background sends `STRUCTURED_INSIGHTS`:
 | `content/content.js` | Content-script message router for overlay events |
 | `content/services/contentExtractor.js` | Readability.js + fallback text extraction (4000-char cap) |
 | `content/services/pageAnalyzer.js` | `analyzePage()` — routes to extraction / timing collection |
-| `content/ui/overlay.js` | `createStreamingOverlay()`, `appendStreamChunk()`, `appendInsights()` |
+| `content/ui/streaming-analyze.js` | `createStreamingOverlay()`, `appendStreamChunk()`, `appendInsights()` |
 | `content/ui/styles.js` | Overlay styling (`hostStyle`) |
 | `ai/utility.js` | `analyzePage()`, `getStructuredInsights()`, `translateResult()`, `translateInsights()` |
 | `ai/storageCleaner.js` | Daily eviction of expired `wbm_*` cache entries |

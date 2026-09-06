@@ -451,16 +451,9 @@ ${pageContent}`;
                     httpStatus?.status === "chain" ? `HTTP Status chain: ${httpStatus.codes.join(' → ')}` : '';
                 const textPrompt = `Analyze this archived web page using the load timing stats and the attached screenshot. Answer each question in 1-2 concise sentences.
 
-            // Truncate page content to fit remaining context window
-            const remaining = worker.contextWindow - worker.contextUsage;
-            const promptOverhead = 400; // buffer for prompt text + timing stats + response
-            const available = Math.max(remaining - promptOverhead, 100);
-            const charBudget = available * 4; // ~4 chars per token
-            if (pageContent.length > charBudget) {
-              pageContent = pageContent.slice(0, charBudget);
-            }
-
-            let prompt;
+1) Is this page showing an error? (real error page, soft-404, or normal). Even if the HTTP status is 200, the page can still be a soft-404 — examine the body content and screenshot carefully for signs like very short/generic text, "not found" messaging, an empty body, or placeholder/search results suggesting the page doesn't exist.
+2) Does the content look complete, or truncated/broken?
+3) Does the screenshot show a properly rendered page, or something broken/blank?
 
 ${statusLine}
 Load Stats:
@@ -532,11 +525,8 @@ ${timingSummary}`;
             }
 
             console.timeEnd(action);
-            
-            if (targetLanguage && targetLanguage !== 'en') {
-                chrome.tabs.sendMessage(tabId, {
-                    type: "SHOW_TRANSLATING"
-                })
+
+            if (action !== "quality" && targetLanguage && targetLanguage !== 'en') {
                 const translated = await this.translateResult(fullText, targetLanguage);
                 return {
                     success: true,
