@@ -3,6 +3,7 @@ import { StorageCleaner } from "./ai/storageCleaner.js";
 import { cdxBase } from "./api/cdx.js";
 import { isPlaybackPage, parsePlaybackUrl, parseDiff } from "./utils/helpers.js";
 import { WordDiffEngine } from "./utils/diff.js";
+import { KEY, touchAction } from "./utils/MostRecentUsed.js";
 
 const aiSession = new AISession();
 const storageCleaner = new StorageCleaner();
@@ -197,7 +198,21 @@ async function handleLiveCompare(tab) {
   }
 }
 
+// This will make sure that fast clicks don't overwrite each other
+let lastSave = Promise.resolve();
+
+function recordActionUse(action) {
+  lastSave = lastSave.then(async () => {
+    const data = await chrome.storage.local.get(KEY);
+    const newOrder = touchAction(data[KEY], action);
+    await chrome.storage.local.set({ [KEY]: newOrder });
+  }).catch((error) => {
+    console.warn("[MRU] failed to record action.", error);
+  });
+}
+
 async function handleAction(action, tab) {
+  recordActionUse(action);
   if (action === "compare") {
     await handleCompare(tab);
     return;
@@ -550,9 +565,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === "CHAT_QUESTION_START") {
+    // declared outside so that the catch can report the error
+    const { messageId } = request;
     (async () => {
       try {
-        const { context, question, messageId, chatType } = request;
+        const { context, question, chatType} = request;
         if (!context || !question || !messageId) {
           chrome.tabs.sendMessage(sender.tab.id, { type: "CHAT_STREAM_ERROR", messageId, error: "Missing parameters." });
           return;

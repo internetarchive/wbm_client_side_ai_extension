@@ -6,7 +6,9 @@ let _pendingInsightsLang = null;
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const action = request.action;
   if(request.type === "REQUEST_CONTENT") {
-    const result = analyzePage(sendResponse);
+    //const result = analyzePage(sendResponse);
+    // the result is declared but not used
+    analyzePage(sendResponse, action);
     return true;
   }
 
@@ -15,7 +17,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   else if (request.type === "STREAM_START") {
-    createStreamingOverlay(request.action);
+    // The line below is commented out beacuse it is not good for multi-language support
+    //createStreamingOverlay(request.action);
+    _currentAction = request.action;
+    createStreamingOverlay(request.action, request.targetLanguage, request.action === "summarize");
+    window.__onLanguageChange = handleLanguageChange;
   }
 
   else if (request.type === "STREAM_CHUNK") {
@@ -23,7 +29,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   else if (request.type === "STREAM_END") {
-    finishStream();
+    //finishStream();
+    //finishStream() does nothing and does not exist
+    //TRANSLATED_RESULT already handles the overlay and summary displau
   }
 
   else if (request.type === "STREAM_ERROR") {
