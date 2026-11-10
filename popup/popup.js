@@ -1,6 +1,7 @@
 import { cdxBase } from "../api/cdx.js";
 import { AISession } from "../ai/utility.js";
 import { isPlaybackPage, formatDate, parsePlaybackUrl } from "../utils/helpers.js";
+import { MRUCache } from "../utils/mruCache.js";
 
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 const CACHE_PREFIX_HEALTH = "wbm_health_";
@@ -9,7 +10,107 @@ const CACHE_PREFIX_TREND = "wbm_popup_trend_";
 const cdx = new cdxBase();
 const ai = new AISession();
 
-document.addEventListener("DOMContentLoaded", () => {
+const ACTION_ICONS = {
+  summarize: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+  quality: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>`,
+  compare: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="8" height="18" rx="1"/><rect x="14" y="3" width="8" height="18" rx="1"/></svg>`,
+};
+
+const MENU_ICONS = {
+  summarize: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>`,
+  quality: `<path d="M9 12l2 2 4-4"/><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/>`,
+  compare: `<rect x="2" y="3" width="8" height="18" rx="1"/><rect x="14" y="3" width="8" height="18" rx="1"/>`,
+  history: `<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`,
+};
+
+const ACTION_LABELS = {
+  summarize: "Summarize",
+  quality: "Quality",
+  compare: "Compare Snapshots",
+  history: "Compare History",
+};
+
+async function renderActionGrid() {
+  const grid = document.querySelector(".action-grid");
+  const dropdown = document.getElementById("menu-dropdown");
+  if (!grid || !dropdown) return;
+
+  const [promoted, collapsed] = await Promise.all([
+    MRUCache.getPromotedActions(),
+    MRUCache.getCollapsedActions(),
+  ]);
+
+  const promotedCount = promoted.length;
+
+  grid.innerHTML = "";
+  dropdown.innerHTML = "";
+
+  promoted.forEach((action) => {
+    const btn = document.createElement("button");
+    btn.className = "action-card";
+    btn.dataset.action = action;
+    btn.innerHTML = `
+      <span class="action-icon">${ACTION_ICONS[action] || ""}</span>
+      <span class="action-label">${ACTION_LABELS[action] || action}</span>
+    `;
+    btn.addEventListener("click", () => triggerAction(action));
+    grid.appendChild(btn);
+  });
+
+  const moreBtn = document.createElement("button");
+  moreBtn.id = "menu-btn";
+  moreBtn.className = "action-card";
+  moreBtn.dataset.action = "more";
+  moreBtn.innerHTML = `
+    <span class="action-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span>
+    <span class="action-label">More Actions</span>
+  `;
+  grid.appendChild(moreBtn);
+
+  [...collapsed, "history"].forEach((action) => {
+    const item = document.createElement("button");
+    item.className = "menu-item";
+    item.dataset.action = action;
+    item.innerHTML = `
+      ${MENU_ICONS[action] ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${MENU_ICONS[action]}</svg>` : ""}
+      ${ACTION_LABELS[action] || action}
+    `;
+    item.addEventListener("click", () => triggerAction(action));
+    dropdown.appendChild(item);
+  });
+
+  const menuBtn = document.getElementById("menu-btn");
+  if (menuBtn) {
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const rect = menuBtn.getBoundingClientRect();
+      dropdown.style.top = (rect.bottom + 4) + "px";
+      dropdown.style.right = (document.querySelector(".container").offsetWidth - rect.right) + "px";
+      dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
+    });
+  }
+  document.addEventListener("click", () => { dropdown.style.display = "none"; });
+  dropdown.addEventListener("click", (e) => e.stopPropagation());
+}
+
+function triggerAction(action) {
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    if (!tab) return;
+    let msgAction = action;
+    if (action === "history") {
+      loadCompareHistory();
+      return;
+    }
+    if (action === "compare") {
+      msgAction = "compare";
+    }
+    chrome.runtime.sendMessage({ type: "PERFORM_ACTION", action: msgAction, tabId: tab.id }, () => {
+      window.close();
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
   const languageSelect = document.getElementById("language-select");
   const saveButton = document.getElementById("save-button");
   const statusMessage = document.getElementById("status-message");
@@ -31,49 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  document.querySelectorAll(".action-card:not(.action-card--disabled)").forEach((card) => {
-    if (card.dataset.action === "more") return;
-    card.addEventListener("click", () => {
-      const action = card.dataset.action;
-      chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-        if (tab) {
-          chrome.runtime.sendMessage({ type: "PERFORM_ACTION", action, tabId: tab.id }, () => {
-            window.close();
-          });
-        }
-      });
-    });
-  });
-
-  const menuBtn = document.querySelector('.action-card[data-action="more"]');
-  const dropdown = document.getElementById("menu-dropdown");
-  menuBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const rect = menuBtn.getBoundingClientRect();
-    dropdown.style.top = (rect.bottom + 4) + "px";
-    dropdown.style.right = (document.querySelector(".container").offsetWidth - rect.right) + "px";
-    dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
-  });
-  document.addEventListener("click", () => { dropdown.style.display = "none"; });
-  dropdown.addEventListener("click", (e) => e.stopPropagation());
-
-  dropdown.querySelectorAll(".menu-item").forEach(item => {
-    item.addEventListener("click", () => {
-      dropdown.style.display = "none";
-      const action = item.dataset.action;
-      if (action === "compare") {
-        chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-          if (tab) {
-            chrome.runtime.sendMessage({ type: "PERFORM_ACTION", action: "compare", tabId: tab.id }, () => {
-              window.close();
-            });
-          }
-        });
-      } else if (action === "history") {
-        loadCompareHistory();
-      }
-    });
-  });
+  await renderActionGrid();
 
   loadPageHealth();
 });

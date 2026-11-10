@@ -3,6 +3,7 @@ import { StorageCleaner } from "./ai/storageCleaner.js";
 import { cdxBase } from "./api/cdx.js";
 import { isPlaybackPage, parsePlaybackUrl, parseDiff } from "./utils/helpers.js";
 import { WordDiffEngine } from "./utils/diff.js";
+import { MRUCache } from "./utils/mruCache.js";
 
 const aiSession = new AISession();
 const storageCleaner = new StorageCleaner();
@@ -198,6 +199,7 @@ async function handleLiveCompare(tab) {
 }
 
 async function handleAction(action, tab) {
+  await MRUCache.recordAction(action);
   if (action === "compare") {
     await handleCompare(tab);
     return;
