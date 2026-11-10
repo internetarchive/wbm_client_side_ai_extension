@@ -52,7 +52,7 @@ After timestamps resolve, both paths share this pipeline:
 5. **Stats** — `parseDiff(diff)` (utils/helpers.js) yields `addedCount`, `removedCount`, and `diffLines` (the added/removed lines).
 6. **AI summary** — if AI is available, `aiSession.summarizeChanges({ before: cleanA.title, after: cleanB.title }, diffLines)` asks the model to summarize what changed between the two versions. The summary is generated **even when the diff is empty** — in that case the prompt states *"No textual content differences were detected"* and the model surfaces things like a title change.
 7. **Cache** — the whole result is stored under `wbm_compare_<url>_<tsA>_<tsB>` (or `wbm_compare_<url>_live_<archiveTs>`), including `titleA`, `titleB`, `diff`, `stats`, `aiSummary`, `timestamp`. A cache hit (checked right after timestamp resolution) short-circuits the fetch/diff/AI work.
-8. **`COMPARE_RESULT` (success)** → `showCompareOverlay(data)` (content/ui/overlay.js).
+8. **`COMPARE_RESULT` (success)** → `showCompareOverlay(data)` (content/ui/comparison.js).
 
 ---
 
@@ -118,7 +118,8 @@ When the user sends their first message:
 | File | Responsibility |
 |---|---|
 | `background.js` | `handleCompare`, `handleLiveCompare`, `COMPARE_PARSE_INPUT` pipeline, chat streaming + AbortController map, caching |
-| `content/ui/overlay.js` | `showCompareInput`, `showCompareLoading`, `showCompareOverlay`, chat UI (thinking dots, stop button, markdown), `_pendingStreamMsgs` |
+| `content/ui/comparison.js` | `showCompareInput`, `showCompareLoading`, `showCompareOverlay`, expand modals |
+| `content/ui/chat.js` | Chat UI (thinking dots, stop button, markdown), `_pendingStreamMsgs`, `CHAT_*` listener |
 | `content/ui/base-popup.js` / `content/ui/styles.js` | Overlay shell + `compareStyle` |
 | `utils/diff.js` | `WordDiffEngine` — LCS word diff |
 | `utils/helpers.js` | `parsePlaybackUrl`, `parseDiff`, `formatDate`, `formatCompareDate` |

@@ -145,7 +145,7 @@ The model's verdict **does not** modify the HTTP-status badge; the badge reflect
 | `content/services/pageAnalyzer.js` | `analyzePage()` — routes quality to `getPageTimings()` |
 | `content/utils/pageTimings.js` | `getPageTimings()` — performance entry aggregation |
 | `content/ui/quality-popup.js` | `qualityPopup(timings)` + `statusBadge()` UI |
-| `content/ui/overlay.js` | Streaming overlay, `appendQualityTimings()`, `setScreenshot()` |
+| `content/ui/streaming-analyze.js` | Streaming overlay, `appendQualityTimings()`, `setScreenshot()` |
 | `content/ui/styles.js` | Overlay + quality section styling |
 | `ai/utility.js` | `analyzePage()` quality branch — schema-constrained streaming |
 | `api/cdx.js` | `getSnapshotStatus_quality()` |

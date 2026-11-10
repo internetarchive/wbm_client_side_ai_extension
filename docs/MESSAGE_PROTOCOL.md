@@ -13,7 +13,7 @@ Reference for every message the extension exchanges between its runtime contexts
 ## Conventions
 
 - `background.js` runs **ES modules**, imports: `AISession`, `StorageCleaner`, `cdx`, `wordDiff`, `parseDiff`, etc.
-- Content script listens in `content/content.js` and delegates to `content/ui/overlay.js`.
+- Content script listens in `content/content.js` and delegates to `content/ui/` (`streaming-analyze.js`, `comparison.js`, `chat.js`).
 - Popup sends actions with `PERFORM_ACTION`; the background resolves the active tab itself.
 - Streaming messages are **cumulative** in the UI: `STREAM_CHUNK` appends to a growing string, `CHAT_STREAM_CHUNK` appends to a per-message bubble.
 
